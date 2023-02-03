@@ -1,0 +1,13 @@
+module HQTrans
+{
+	enum E_REBUILD_TYPE
+	{
+		REBUILD_SZ = 0,
+		REBUILD_SH_TRANS = 1,
+		REBUILD_SH_ORDER = 2
+	};
+	struct RebuildChannelInfo
+	{
+		1 optional map<int, long> mapChannelIndex;
+	};
+};

@@ -1,0 +1,546 @@
+module Cvt
+{
+	//期权标的类型
+	enum E_CVT_UNDERLYING_TYPE
+	{
+		ECUT_ETF = 0,		//ETF
+		ECUT_ASH = 1,		//上海A股
+		ECUT_ZS  = 2,       //指数
+	};
+
+	//指数子类型
+	enum E_CVT_ZS_SUB_TYPE
+	{
+		E_TYPE_ZQZS = 1,		//债券指数
+	};
+	
+	//沪深基金子类型
+	enum E_CVT_JJ_SUB_TYPE
+	{
+		SH_JJ_CEF = 1,		//上海封闭式基金
+		SH_JJ_OEF = 2,		//上海开放式基金
+		SH_JJ_CBS = 3,		//上海交易所交易基金，ETF
+		SH_JJ_OFN = 4,		//上海其他基金
+		SH_JJ_LOF = 5,		//上海LOF基金
+		SZ_JJ_LEF = 6,		//深圳本市场股票ETF
+		SZ_JJ_SEF = 7,		//深圳跨市场股票ETF
+		SZ_JJ_KJF = 8,		//深圳跨境ETF
+		SZ_JJ_LZF = 9,		//深圳本市场实物债券ETF
+		SZ_JJ_CZF = 10,		//深圳现金债券ETF
+		SZ_JJ_LGF = 11,		//深圳黄金ETF
+		SZ_JJ_LCF = 12,		//深圳货币ETF
+		SZ_JJ_GEF = 13,		//深圳杠杆ETF
+		SZ_JJ_SQF = 14,		//深圳商品期货ETF
+		SZ_JJ_LOF = 15,		//深圳标准LOF
+		SZ_JJ_FJF = 16,		//深圳分级子基金
+		SZ_JJ_CEF = 17,		//深圳封闭式基金
+		SZ_JJ_SSF = 18,		//深圳仅申赎基金
+		SZ_JJ_RET = 19,		//深圳基础设施基金
+		SH_JJ_RET = 20,		//上海REITs基金
+	};
+
+	//上海债券子类型
+	enum E_CVT_SHZQ_SUB_TYPE
+	{
+		SH_ZQ_GBF = 1,		//上海国债
+		SH_ZQ_GBZ = 2,		//上海无息国债
+		SH_ZQ_DST = 3,		//上海国债分销
+		SH_ZQ_DVP = 4,		//上海公司债券分销
+		SH_ZQ_CBF = 5,		//上海企业债券
+		SH_ZQ_CCF = 6,		//上海可转换企业债
+		SH_ZQ_CPF = 7,		//上海公司债券
+		SH_ZQ_FBF = 8,		//上海金融机构发行债券
+		SH_ZQ_BRP = 9,		//上海质押式企业回购
+		SH_ZQ_ORP = 10,		//上海买断式债券回购
+		SH_ZQ_CBD = 11,		//上海分离式可转债
+		SH_ZQ_RET = 20,		//上海其他债券
+		SH_ZQ_WIT = 21,		//上海国债预发行
+		SH_ZQ_QRP = 22,		//上海报价回购
+		SH_ZQ_AMP = 23,		//上海集合资产管理计划
+	};
+
+	//深圳债券子类型
+	enum E_CVT_SZZQ_SUB_TYPE
+	{
+		SZ_ZQ_GBF = 1,		//深圳国债(含地方债)
+		SZ_ZQ_CBF = 5,		//深圳企业债券
+		SZ_ZQ_CCF = 6,		//深圳可转债
+		SZ_ZQ_CPF = 7,		//深圳公司债券
+		SZ_ZQ_SMF = 12,		//深圳私募债
+		SZ_ZQ_SSF = 13,		//深圳可交换私募债
+		SZ_ZQ_CJF = 14,		//深圳证券公司次级债
+		SZ_ZQ_ZCF = 15,		//深圳资产支持证券
+		SZ_ZQ_GDF = 16,		//深圳证券公司短期债
+		SZ_ZQ_GJF = 17,		//深圳可交换公司债
+	};
+
+	//港股通子类型
+	enum E_CVT_GGT_SUB_TYPE
+	{
+		GGT_BOND = 1,		//债券
+		GGT_BWRT = 2,		//一篮子权证
+		GGT_EQTY = 3,		//股本
+		GGT_TRST = 4,		//信托
+		GGT_WRNT = 5,		//权证
+	};
+	
+	const int CVT_OPTION_LEN = 5;
+	
+	struct CvtOptionInfo
+	{
+		0 optional string sName;			
+		1 optional string sUnderlyingCode;			//标的代码
+		2 optional string sUnerlyingName;			//标的名称
+		3 optional string sContractID;				//交易ID
+		4 optional int	  eUnderlingType = ECUT_ETF;//标的类型
+		5 optional byte	  cOptionType;				//E:欧式期权， A：美式期权
+		6 optional byte	  cCallOrPut;				//C:认购， P：认沽
+		7 optional int    iContractMutiplierUnit;	//经过除权出席后的合约单位
+		8 optional double dExercisePrice;			//行权价
+		9 optional int    iStartDate;				//首个交易日
+		10 optional int	  iEndDate;					//最后交易日
+		11 optional int   iExerciseDate;			//期权行权日
+		12 optional int   iDeliveryDate;			//期权交割日
+		13 optional int   iExpireDate;				//期权到期日
+		14 optional byte  cUpdateVersion;			//期权合约的版本号
+		15 optional long  lTotalLongPosition;		//未平仓数据
+		16 optional double dPreClose;				//前收盘价
+		17 optional double dPreSettlPrice;			//前结算价
+		18 optional double dUnderlyingPreClose;		//标的前收盘 
+		19 optional byte   cPriceLimitType;			//涨跌幅限制类型  N：有涨跌停
+		20 optional double dUpLimit;				//涨停价
+		21 optional double dDownLimit;				//跌停价
+		22 optional double dMarginUnit;				//保证金数量，精确到分
+		23 optional float  fMarginRatioParam1;		//保证金计算参数1
+		24 optional float  fMarginRatioParam2;		//保证金计算参数2
+		25 optional int    iRoundLot;				//整手数
+		26 optional int	   iLmtOrderMinFloor;		//单笔限价申报的申报张数下限
+		27 optional int	   iLmtOrderMaxFloor;		//单笔限价申报的申报张数上限
+		28 optional int	   iMktOrderMinFloor;		//单笔市价申报的申报张数下限
+		29 optional int	   iMktOrderMaxFloor;		//单笔市价申报的申报张数上限
+		30 optional float  fTickSize;				//最小报价单位
+		31 optional unsigned byte   cTradeFlag;		//可交易标识 （ 0：可开仓 1:限制卖出开仓和买入开仓）
+		32 optional unsigned byte   cTradePhase;	//0: 未连续停牌，1：连续停牌
+		33 optional unsigned byte cExpireStatus;	//0:未临近到期日，1：距离到期日不足5个交易日
+		34 optional unsigned byte cChangeStatus;	//0:最近未做调整，1：最近5个交易日内合约发生过调整
+		35 optional unsigned byte cNewFlag;			//A:当日新挂牌的合约，E：存续的合约
+		36 optional string sContractMonth;			//T型报价的月份
+		37 optional int    iDaysLeft;
+		38 optional short  shtUnderlyingMarket;		//标的市场
+		39 optional int    iAtpBuyLimit;		    //盘后固定交易买上限
+		40 optional int    iAtpSellLimit;		    //盘后固定交易卖上限
+		41 optional string sNameEx;                 //基础期权长名称
+	};
+
+	//股票基本信息
+	struct CvtSecurityInfo
+	{		
+		0 optional string sName;                //证券名称
+		1 optional unsigned short	shtType;    //证券主类型
+		2 optional double dUpStopPrice;			//涨停价
+		3 optional double dDownStopPrice;		//跌停价
+		4 optional bool  bCrdBuyUnderlying;		//融资标识
+		5 optional bool	 bCrdSellUnderlying;	//融券标识
+		6 optional int		iLastTradeDate;		//最后交易日期，如果没有则为0
+		7 optional int		iIPODate;			//上市日期
+		8 optional short	shtBuyUnit;		    //买订单最少数量
+		9 optional short	shtSellUnit;		//卖订单最少数量		
+		10 optional float   fMinPriceChange;	//最小价格变动单位,目前只有上交所提供		
+		11 optional long    ltg;				//流通股
+		12 optional long   zgb;					//总股本，目前仅深交所提供
+		13 optional string sUnderlyingCode;		//标的代码，对于股票是自身，对于债券是对应的股票
+		14 optional bool   bHasGdr;				//是否以gdr形式到伦敦上市
+		15 optional unsigned short  shtSubType;	//E_CVT_JJ_SUB_TYPE,E_CVT_SHZQ_SUB_TYPE,E_CVT_SZZQ_SUB_TYPE
+		16 optional bool  bMarketization;       //市场化转融通标志
+		17 optional bool  bRestricted;          //限售股份出借标志
+		18 optional bool  bMarkerFlag;          //是否有做市商
+		19 optional float fUpDownRate;          //涨跌停幅度
+		20 optional bool  bBegin;               //是否上市初期
+		21 optional bool  bSzAtpFlag;           //是否是深圳盘后定价交易
+		22 optional bool  bMarketFluc;          //是否参与市场波动调节
+		23 optional bool  bCasTrade;            //是否参与收盘集合竞价
+		24 optional bool  bPosTrade;            //是否参与早盘集合竞价
+		25 optional string strShState;          //上海证券静态状态
+		26 optional string strSzState;          //深圳证券静态状态，可能多个|分割
+		27 optional string strShType;           //上海证券原始类别
+		28 optional string strSzType;           //深圳证券原始类别
+		29 optional double dSzInterest;         //深圳债券应计利息
+		30 optional int    iSzAccrualDate;      //深圳债券付息起息日
+		31 optional double dSzCouponRate;       //深圳债券预期收益率
+		32 optional short  shtSzPricingMethod;  //深圳债券计价方式,1-净价，2-全价
+		33 optional string strCurrency;         //港股通币种
+		34 optional short  shtZxcj;             //港股通差价属性
+		35 optional bool  bRegist;              //是否注册制
+	};
+	
+	//上海债券产品信息
+	struct CvtShBondInfo
+	{		
+		0 optional string   sName;                         //证券名称
+		1 optional string   strBankCode;		           // 银行间代码
+		2 optional int      iIpoDate;                      //上市日期
+		3 optional double   dFacePrice;                    //面值
+		4 optional double   dIssuePrice;                   //发行价
+		5 optional float    fCouponRate;                   //票面利率
+		6 optional int      iRateStartDate;                //起息日
+		7 optional int      iEndDate;                      //到期日
+		8 optional byte     cRateSpan;                     //付息频率
+		9 optional int      iDateLimit;                     //期限
+		10 optional string   strDateLimitType;               //期限单位,BYDAY:日，BYYEAR:年
+		11 optional string   strNameEx;                      //证券全称
+		12 optional string   strZqType;                      //债券类型
+		13 optional byte     cRateType;                      //利率类型
+		14 optional byte     cIssueType;                     //发行方式
+		15 optional string   strIssuer;                      //发行人
+		16 optional string   strIssuerType;                  //发行人类型
+		17 optional string   strMainLevel;                   //主体评级
+		18 optional string   strZqLevel;                     //债项评级
+		19 optional string   strLevelAgency;                 //评级机构
+		20 optional byte     cIsLocal;                       //是否本所上市
+		21 optional double   dAmount;                        //发行量（亿元）
+		22 optional string   strSpecType;                    //特殊债券类型
+		23 optional byte     cJgfd;                          //结构化分档
+		24 optional string   strZczcName;                    //资产支持名称
+		25 optional string   strTradeType;                   //交易方式
+		26 optional string   strPayType;                     //结算方式
+		27 optional byte     cPriceType;                     //价格方式
+		28 optional string   strRequirement;                 //投资者适当性要求
+		29 optional byte     cZr;                            //特殊转让版
+		30 optional byte     cZs;                            //是否基准做市品种
+		31 optional int      iDelistDate;                    //摘牌日
+		32 optional string   strCumRightType;                //含权类型
+		33 optional string   strUnderwriter;                 //主承销商
+		34 optional int      iIpoStartDate;                  //发行起始日
+		35 optional int      iIpoEndDate;                    //发行终止日
+		36 optional int      iOutBoundDate;                  //出库起始日
+		37 optional int      iInBoundDate;                   //入库起始日
+		38 optional int      iCBStartDate;                   //回售起始日
+		39 optional int      iCBEndDate;                     //回售终止日
+		40 optional int      iCBSendDate;                    //回售资金发放日
+		41 optional int      iCBBackStartDate;               //回售可撤销起始日
+		42 optional int      iCBBackEndDate;                 //回售可撤销结束日
+		43 optional byte     cIsReSell;                      //是否转售
+		44 optional string   strTransType;                   //转股类型
+		45 optional string   strTransCode;                   //转股代码
+		46 optional double   dTransPrice;                    //转股价格
+		47 optional int      iTransStartDate;                //转股起始日
+		48 optional int      iTransEndDate;                  //转股终止日
+		49 optional string   strExCode;                      //换股代码
+		50 optional double   dExPrice;                       //换股价格
+		51 optional int      iExStartDate;                   //换股起始日
+		52 optional int      iExEndDate;                     //换股终止日
+	};
+
+	struct CvtGdrInfo
+	{
+		1 optional short shtMarket;       //内地市场编号
+		2 optional string sCode;          //内地代码
+		3 optional long lStockShare;       //内地基础股票数
+		4 optional unsigned int uiNewShareIPOdate ;  //新增股份上市日期
+		5 optional string sNewShareReason;    //新增股份原因
+
+		6 optional string sGdrCode;       //伦敦代码
+		7 optional long  lGdrStockShare;    //gdr份额数
+		8 optional unsigned int    uiGdrIPOdate;       //gdr上市日期
+
+		9 optional string sConvertRate;      //转化比例
+	}; 
+
+	
+	//公告数据
+	struct CvtAnnoucement
+	{		
+		1 optional long lTime;			//公告时间
+		2 optional int iChannelNo;		//来源
+		3 optional string strNewsID;	//唯一ID
+		4 optional string strHeadline;	//标题
+		5 optional string strFormat;
+		6 optional string strData;		//正文内容
+	};
+	
+
+	
+	////ETF基金信息: begin///////////
+	struct EtfComponentInfo
+	{
+		0 optional short shtMarket;					//市场
+		1 require  string sCode;					//代码
+		2 optional string sName;					//股票名称
+		3 optional int  qty;						//成份股证券数量
+		4 optional byte subFlag;					//替代标识，深圳：0：禁止现金替代，1：可以用现金替代，2：必须用现金替代
+		5 optional float preminumRatio;				//申购溢价比例
+		6 optional double dSubCashAmount;			//申购替代金额
+	};
+
+	struct EtfBasicInfo
+	{
+		1 optional int	  iTradingDay;
+		2 optional int	  iPreTradingDay;
+		3 optional double dEstimateCashComponent;		//预估现金差额
+		4 optional float  fMaxCashRatio;				//最大现金替代比例	
+		5 optional bool	  bPublish = false;				//是否发布IOPV
+		6 optional int	  iCreationRedemptionUnit;		//最小申购单位对应的ETF份数
+		7 optional int    iTotalRecordNum;				//组合证券数目
+		8 optional bool	  bCreation = false;			//是否允许申购
+		9 optional bool   bRedemption = false;			//是否允许赎回
+
+		10 optional double dCashComponent;				//T-1日现金余额
+		11 optional double dNAVPreCU;					//T-1日申购赎回基准单位净值
+		12 optional double dNAV;						//T-1日基金单位净值 
+	};
+	
+	struct EtfDescInfo
+	{
+		0 optional short shtMarket;
+		1 optional string sCode;							//基金代码
+		2 optional string sName;							//名称
+		3 optional string sFundId1;							//一级市场名称
+		4 optional string sUnderlyingCode;					//基金目标指数
+		5 optional EtfBasicInfo stBaseInfo;					//基金基本信息
+		6 optional vector<EtfComponentInfo> vComponents;	//成份股
+	};
+	////ETF基金信息: end///////////
+
+		//股票基本信息
+	struct CvtBjsBasicInfo
+	{		
+		0 optional string           sName;                //证券名称
+		1 optional unsigned short	shtType;              //证券主类型
+	    2 optional unsigned short	shtZRDW;	          // 交易单位
+		3 optional string           strHYZL;			  // 行业种类
+		4 optional string           strHBZL;			   // 货币种类
+		5 optional int              iMGMZ;				   // 每股面值
+		6 optional long             lZGB;							// 总股本
+		7 optional long             lFXSGB;						// 非限售股本
+		8 optional double           dSNSY;							// 上年每股收益 N	9,4
+		9 optional double           dBNSY;							// 本年每股收益 N	9,4
+		10 optional float           fJSFL;							// 经手费率 N	7,6
+		11 optional float           fYHSL;							// 印花税率 N	7,6
+		12 optional float           fGHFL;						    // 过户费率 N	7,6
+		13 optional int             iGPRQ;							// 挂牌日期
+		14 optional int             iQXR;						    // 起息日
+		15 optional int             iDQR;							// 到期日
+		16 optional long            lMBXL;						    // 每笔限量 N	9,0
+		17 optional int				iBLDW;							// 买数量单位 N	6,0
+		18 optional int				iSLDW;						    // 卖数量单位 N	6,0
+		19 optional long            lZXSBSL;						// 最小申报数量 N	9,0
+		20 optional float           fJGDW;						    // 价格档位  N	5,3
+		21 optional float			fSBCS;							// 首笔交易限价参数 N	7,3
+		22 optional float			fHXCS;						    // 后续交易限价参数 N	7,3
+		23 optional short			shtXJXZ;						// 限价参数性质 N	1,0
+		24 optional double			dZTJG;						    // 涨停价格 N	9,3
+		25 optional double			dDTJG;						    // 跌停价格 N	9,3
+		26 optional double			dDZZTJG;						// 大宗交易价格上限 N	9,3
+		27 optional double			dDZDTJG;						// 大宗交易价格下限 N	9,3
+		28 optional byte		    CFGBZ;						    // 成分股标志
+		29 optional float			fZHBL;						    // 折合比例 N	5,2
+		30 optional byte		    ZRZT;						    // 交易状态
+		31 optional byte			ZQJB;							// 证券级别
+		32 optional byte			ZRLX;						    // 交易类型
+		33 optional short			shtZSSSL;						// 做市商数量，N	4,0
+		34 optional byte		    TPBZ;							// 停牌标志
+		35 optional byte			CQCX;                          // 除权除息标志
+		36 optional byte			WLTP;                          // 网络投票标志
+		37 optional string			strQTYW;                       //其他业务状态
+		38 optional string	        sUnderlyingCode;               //标的证券
+		39 optional short	        shtStepType;                   //1-基础层，2-创新层，3-北交所
+	};
+
+	/**
+	* 股票基础信息
+	*/
+	struct CvtStockBaseInfo
+	{		
+		1 optional short market;
+		2 optional string sCode;
+		3 optional CvtOptionInfo stOption;	//期权基础信息
+		4 optional CvtSecurityInfo stChinaSec;	//国内证券
+		5 optional CvtGdrInfo stGdrInfo;		//gdr基本信息
+		6 optional CvtAnnoucement stAnnouce;	//公告信息
+		7 optional EtfDescInfo stEtf;			//etf基金
+		8 optional CvtBjsBasicInfo stBjs;	    //北交所证券
+		9 optional CvtShBondInfo stShBond;	    //上海债券产品信息
+	};
+	
+	
+	struct StandardQt
+	{		
+		0 optional unsigned int uiDate;		//交易日期
+		1 optional unsigned int uiTime;		//交易时间
+		2 optional long totalLongPosition;	//总持仓量
+		3 optional long totalVolume;		//总成交量
+		4 optional double totalValueTraded;	//总成交额
+		5 optional double dPreSettlePrice;	//昨结算
+		6 optional double dOpenPrice;		//开盘价
+		7 optional double dHighPrice;		//最高价
+		8 optional double dLowPrice;		//最低价
+		9 optional double dLastPrice;		//最新价
+		10 optional vector<double> vBuyPrice;	//买价
+		11 optional vector<long> vBuyVol;		//买量
+		12 optional vector<double> vSellPrice;	//卖价
+		13 optional vector<long> vSellVol;		//卖量		
+		14 optional byte cTradePhase;				//交易阶段（S启动，C:集合竞价，T：连续交易，B：休市，E:闭市，V：波动性终端，P：临时停牌，U：收盘集合竞价
+		15 optional byte cSuspendFlag;				//0：未停牌，1：连续停牌
+		16 optional byte cOpenInterestFlag;			//开仓类型（0：不限制，1：限制备兑开仓，2：卖出开仓，3：限制卖出开仓、备兑开仓
+													//4：限制买入开仓，4：限制买入开仓 5：限制买入开仓、备兑开仓 6：限制买入开仓、卖出开仓
+													//7：限制买入开仓、卖出开仓、备兑开仓
+          
+		17 optional short shtTimeMs;		//交易时间(毫秒)
+	};
+
+	struct AcrOptionExt
+	{
+		0 optional float iv;						        	// 期权的隐含波动率
+		1 optional vector<float> vGreekValue;					// 希腊值
+		2 optional float	fInstrinsicValue;					//内在价值，时间价值这里不提供了=价格-内在价值
+		3 optional float	fLeverageRatio;						//杠杆率（另外一个相关的指标：真实杠杆=杠杆率*delta)
+		4 optional float	fPremiumRatio;						//溢价率
+		5 optional float	fXushiDu;							//虚实度
+	};
+
+	/**
+	期权行情
+	*/
+	struct AcrOptionQt
+	{
+		0 optional unsigned int stockID;
+		1 optional short market;
+		2 optional string sCode;
+		3 optional StandardQt stBase;
+		
+		4 optional  double dSettlePrice;		//今日结算价，从clpr03读取
+		
+		5 optional byte cTradeDirection;	//交易方向
+		6 optional long lCurVol;	//现手
+		7 optional double dCurAmt;	//现额
+		8 optional long lCurOI;	//持仓量变化
+		9 optional long lNeiPan;	//内盘
+		10 optional AcrOptionExt stOptExt;
+	};
+	
+	//静态信息
+	enum E_STATIC_DATATYPE
+	{
+		ESDT_OPTION_INFO = 0,			
+		ESDT_SHSZ_SECURITY  = 1,	//沪深证券
+		ESDT_GDR			= 2,	//GDR
+		ESDT_GGT			= 3,	//GGT
+		ESDT_OPTION_SZ_INFO = 4,    //深圳期权
+		ESDT_OPTION_FFEX_INFO = 5,    //中金所期权
+		ESDT_ANNOUCEMENT	  = 6,	  //公告
+		ESDT_SZ_ETF_FUND	  = 7,	  //深圳基金
+		ESDT_SH_ETF_FUND	  = 8,	  //上海基金
+		ESDT_FFEX_QH = 9,             //中金所期货
+		ESDT_BJS_SECURITY = 10,       //北交所证券
+	};
+
+	
+	struct TStaticDataList
+	{
+		0 optional int iType;		//E_STATIC_DATATYPE枚举
+		1 optional map<string, CvtStockBaseInfo> mBaseInfo;
+		//是否全面覆盖
+		2 optional bool bReset;
+	};	
+
+
+	struct TStaticDataMap
+	{
+		//key是E_STATIC_DATATYPE
+		1 optional map<int, TStaticDataList> mData;	
+	};
+	
+	enum E_AUCTION_TYPE
+	{
+		E_AUCTION_BUY = 1,		//买
+		E_AUCTION_SELL = 2,		//卖
+	};
+
+	struct AuctionQt
+	{
+		1 optional unsigned int uiStockID;		//股票id
+		2 optional int iTime;					//时间
+		3 optional double dPreClose;			//昨收
+		4 optional double dOpen;			    //竞价开盘
+		5 optional double dNow;			        //竞价匹配价
+		6 optional long   vol;		            //竞价匹配量
+		7 optional long   unmatchVol;			//竞价未匹配量
+		8 optional double   unmatchValue;		//竞价未匹配金额
+		9 optional E_AUCTION_TYPE  eDirection;	  //竞价未匹配方向
+	};
+
+	struct AuctionQtList
+	{
+		1 optional vector<AuctionQt> vAuctionQt;
+	};
+	
+	struct AuctionRtMin
+	{
+		1 optional unsigned int     uiStockID;      //股票id
+		2 optional int				iTime;          //时间
+		3 optional double           dNow;			//竞价匹配价
+		4 optional long             vol;            //竞价匹配量
+		5 optional long             unmatchVol;	    //竞价未匹配量
+		6 optional E_AUCTION_TYPE   eDirection;	    //竞价未匹配方向
+	};
+
+	struct AuctionRtMinList
+	{			
+		1 optional bool					bClear;
+		2 optional unsigned int			uiStockID;
+		3 optional vector<AuctionRtMin>	vData;
+	};
+
+	struct AuctionRtMinBatchList
+	{
+		1 optional vector<AuctionRtMinList> vStock;
+	};
+
+	struct CvtAtpRtmin
+	{
+		0 optional unsigned int uiStockID;//股票ID
+		1 optional unsigned int iTime;
+		2 optional unsigned int uiClose;  //*精度
+		3 optional long lVolume;
+		4 optional double dAmount;
+		5 optional long	lTradeNum;
+		6 optional unsigned int uiAvg;	 //*精度，将盘中的成交量合并计算均价，客户端展示的时候可选
+		7 optional unsigned int uiBuyOrderSum;	    //委买
+		8 optional unsigned int uiSellOrderSum; 	//委卖
+	};
+	
+	//单个股票的多个分时数据
+	struct TAptRtMinList
+	{			
+		1 optional bool					bClear;
+		2 optional unsigned int			uiStockID;
+		3 optional vector<CvtAtpRtmin>	vData;
+	};
+	
+	//多个股票的分时数据
+	struct TAptRtMinBatchList
+	{
+		1 optional vector<TAptRtMinList> vStock;
+	};
+
+	//etf扩展字段
+	struct JEtfExtendQt
+	{
+		1 optional double sellPriceMarketValue;	//溢价盘口市值
+		2 optional double buyPriceMarketValue;		//折价盘口市值
+		3 optional double lastPriceMarketValue;	//现价盘口市值
+		4 optional double totalCashAmount;		//现金替代总金额
+	};
+
+	//建议仅对少数标的使用，大量使用可能影响性能，需评估性能
+	struct JExtendQt
+	{
+		1 optional JEtfExtendQt stEtfExtend;
+	};
+
+	//落地使用
+	struct JExtendQtPack
+	{
+		1 optional map<string, JExtendQt> mapData;
+	};
+};

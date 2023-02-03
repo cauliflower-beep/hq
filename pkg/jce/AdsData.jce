@@ -1,0 +1,712 @@
+module HQSys
+{   
+	// 在.TIC文件中读入的数据结构11
+    struct JTickData      
+    {
+        1 optional short   shtMinute;               // 零点以来的分钟数
+        2 optional short   shtCtrl=0;                 // 控制信息
+        3 optional unsigned int    uiNow=0;           // 现价*1000
+        4 optional unsigned int    uiNowVol;        // 现手
+        5 optional int             iVolInStockDif=0;  // 持仓量增减
+        6 optional short   shtInOutFlag=0;            // 买卖标志
+        7 optional short   shtSecond;                 //当前秒（0~59）
+        8 optional unsigned int    uiTradeNum;        //交易笔数
+    };
+    
+    /**
+    * 此结构实际是union
+    */
+    struct JDateTime
+    {
+        1 optional int iDate=0;               // 日期YYYYMMDD(日线)
+        // 2, 3 分钟线 需要用
+        2 optional short shtDay=0;            // 日
+        3 optional short shtTime=0;           // 零点以来的分钟数
+    };
+
+    /**
+    * 此结构实际是union
+    */
+    struct JTogetherZhiShu                      //单位前收盘价(除权用)，期货的持仓量, 指数,涨跌家数
+    {
+        1 optional unsigned int uiVolInStock;   // 持仓量
+        2 optional float fYClose;               // 昨收
+        3 optional unsigned short ushtUp;       //上涨家数
+        4 optional unsigned short ushtDown;     //下跌家数
+    };
+
+    struct JAnalyData
+    {
+        1 optional JDateTime sttDateTime;              // 时间,历史原因, 存到盘上的数据都是 *100 以后的 DWORD 型数据
+        2 optional float fOpen;                        // 单位开盘价
+        3 optional float fHigh;                        // 单位最高价
+        4 optional float fLow;                         // 单位最低价
+        5 optional float fClose;                       // 单位收盘价
+        6 optional float fAmount;                      // 单位成交金额(日线/指数)
+        7 optional long lVolume;                       // 成交量
+        8 optional JTogetherZhiShu sttZhiShu;
+        9 optional unsigned int uiAtpVolume = 0;       // 盘后成交量
+        10 optional double dAtpAmount = 0;            // 盘后成交额
+        11 optional unsigned int uiAtpTradeNum = 0;    // 盘后成交笔数
+        12 optional float fZtPrice = 0.0;				//涨停价
+		13 optional float fDtPrice = 0.0;				//跌停价
+		14 optional long lLtg = 0;						//流通股本
+		15 optional long lZgb = 0;						//总股本
+    };
+
+    struct JRTMinData								// 在.IFZ文件中读入的数据结构1
+    {
+        1 optional short shtMinute;					// 零点以来的分钟数
+        2 optional float fNow;						// 现价,现指数
+        3 optional float fAverage;					// 均价,动态结算价(期货),不含加权的指数
+        4 optional unsigned int uiNowVol=0;			// 现手,现成交金额(100元)
+        5 optional unsigned int uiBuyv=0;				// 买量,上涨家数
+        6 optional unsigned int uiSellv=0;			// 卖量,下跌家数
+        7 optional double dAmount;					//成交额
+        8 optional unsigned int uiVolInStock=0;		// 持仓量(期货)
+        9 optional float fLead;						// 领先指标(指数)
+    }; 
+
+    struct JCurrStockData									// 在.IHQ文件中读入的数据结构 Modified 2003.9.29
+    {
+        1 optional unsigned int uiItemNum;					// 采样点数
+        2 optional float fClose;							// 前收盘价,指数
+        3 optional float fOpen;								// 今开盘价,指数
+        4 optional float fMax;								// 最高价,指数
+        5 optional float fMin;								// 最低价,指数
+        6 optional float fNow;								// 现价,最近指数
+        7 optional float fBuy;								// 最高叫买价
+		8 optional unsigned int uiOpenVolume;				// 开仓量
+        9 optional float fZtPrice;							// 涨停价
+        10 optional float fSell;							// 最低叫卖价,领先指标(指数)
+        11 optional float fLead;							// 领先指标(指数)
+        12 optional float fDtPrice;							// 跌停价
+        13 optional unsigned int uiVolume;					// 总手
+        14 optional unsigned int uiNowVol;					// 现手(总手差)
+        15 optional float fAmount;							// 总成交金额
+        16 optional unsigned int uiInside;					// 内盘
+        17 optional unsigned int uiOutside;					// 外盘
+        18 optional float fTickDiff;						// 笔升跌(价位差)
+		19 optional unsigned int uiVolInStockDiff;			// 持仓差,对于期货而言
+        20 optional float fYield;							// 市盈率1,不含加权的指数
+        21 optional unsigned int uiVolInStock;				// 持仓量
+        22 optional vector<float> vBuyp;					// 四个叫买价,新数据接口
+															// 基金成交金额:Buyp[0]
+															// 债券成交金额:Buyp[1]
+															// 国债成交金额:Buyp[2]
+		23 optional vector<unsigned int> vBuyv;				// 对应四个叫买价的四个买盘  上涨家数:Buyv[0]
+		24 optional vector<unsigned byte> vBuyFlag;			// 大单标志
+		25 optional vector<float> vSellp;					// 四个叫卖价
+															// 权证成交金额:Sellp[0]
+															// 期货昨持仓量:Sellp[1]
+															// 指数其它成交金额:Sellp[1]
+															// 期货昨结算价:Sellp[2]
+															// 指数昨不含加权指数:Sellp[2]
+		26 optional vector<unsigned int> vSellv;			// 对应四个叫卖价的四个卖盘 下跌家数:Sellv[0]
+		27 optional vector<unsigned byte> vSellFlag;		// 大单标志 
+		28 optional unsigned short ushtInOutFlag;			// 内外盘标志
+		29 optional short shtSdUnit;						// 笔升跌单位(用于计算领先指标)
+		30 optional unsigned short ushtRestVol;				// 当前成交量的剩余部分
+		31 optional unsigned short ushtUnused;				// 未用标志
+		32 optional unsigned short ushtYQSY;				// 国债预期收益
+		33 optional unsigned int uiCJBS;					// 升位增加的字段，成交笔数
+		34 optional unsigned int uiReserved;				// 交换
+		35 optional unsigned int uiVolBase;					// !< 量比的基量
+		36 optional float fBuyAvgPrice;						// 委托买入均价
+		37 optional unsigned int uiBuyVol;					// 委托买入总量
+		38 optional unsigned short ushtBuyOrderCount;		// 委托买入价位总数
+		39 optional unsigned int uiBuyNum;					// 委托买入总笔数
+		40 optional unsigned int uiWithDrawBuyVol;			// 撤买总量
+		41 optional float fSellAvgPrice;					// 委托卖出均价
+		42 optional unsigned int uiSellVol;					// 委托卖出总量
+		43 optional unsigned short ushtSellOrderCount;		// 委托卖出价位总数
+		44 optional unsigned int uiSellNum;					// 委托卖出总笔数
+		45 optional unsigned int uiWithDrawSellVol;			// 撤卖总量
+		46 optional vector<unsigned byte> vPrefix;			// 前缀	
+		47 optional byte cSetcode;							// 市场
+		48 optional string sCode;							// 股票代码
+		49 optional string sOptStatus;						// 状态
+		50 optional byte cDkFlag;							// 标志
+		51 optional float fTbp;								// 多空平衡点
+		52 optional float fStopLost;						// 止损点
+		53 optional float fLeave;							// 了结点
+		54 optional float fZhangSu;							// 涨速
+		55 optional unsigned short ushtWarnCount;			// (活跃度)报警次数
+		56 optional vector<unsigned byte> vTradeStatus;		// 交易状态
+		57 optional string sStockName;                      //股票名称
+    };
+
+	struct JPriceVolTable
+	{
+		1 optional unsigned int uiPrice;
+		2 optional unsigned int uiVolume;
+		3 optional unsigned int uiKcl;
+		4 optional unsigned int uiPcl;
+	};
+
+	struct JStock
+	{
+		1 optional byte cSetcode;
+		2 optional string sCode;
+	};
+
+	struct JSimHq
+	{
+		1 optional JStock sttMarket;
+		2 optional float fOpen;						// 今天盘价,指数
+		3 optional float fMax;						// 最高价,指数
+		4 optional float fMin;						// 最低价,指数
+		5 optional float fNow;						// 现价, 最近指数
+		6 optional unsigned int uiVolume;			// 总手
+		7 optional float fAmount;					// 总成交金额
+	};
+    
+    struct JMarketCPTMinInfo
+	{
+		 1 optional short setcode;
+		 2 optional unsigned int dwTradeSequence;
+		 3 optional unsigned int dwTradeDate;
+		 4 optional unsigned int dwTradeTime;
+	};
+
+	struct JSStockInfoUp
+	{
+		1 optional string Code;						// 股票代码
+		2 optional short Unit;						// 最小成交单元
+		3 optional string Name;						// 股票名称
+		4 optional int VolBase;						// 量比量基
+		5 optional byte precise;					// 精度
+		6 optional float Close;						// 收盘价
+		7 optional short Type;						// 区域类型
+		// 8 optional short BaseFreshCount;
+		// 9 optional short GbbqFreshCount;
+	};
+	
+	struct JMarketRegInfo
+	{
+		1 optional short setcode;
+		2 optional string checksum;
+	};
+	
+	struct JMarketDictInfo
+	{
+		1 optional short setcode;
+		2 optional int 	stocknum;
+		3 optional string checksum;
+		4 optional vector<JSStockInfoUp> vStkDict;
+	};
+
+	struct JTokenPeriod						//用于L2用户时间检验
+	{
+		1 optional string sMid;
+		2 optional string sBeginDate;		//Token 有效期
+		3 optional string sEndDate;
+	};
+
+	struct JToken
+	{
+		1 require string sUid;								//用户名
+		2 optional string sCid;
+		3 optional long lTime;								//当前时间  sso Time,用于token period
+		4 optional int iRd;									//用于解析Login加密后的userid
+		5 optional string sU;								//0不可重复登陆，可重复登陆
+		6 optional vector<JTokenPeriod> vTokenPeriod;
+	};
+
+	struct JTransaction
+	{
+		1 optional unsigned int uiTime;
+		2 optional unsigned int uiTradeNo;
+		3 optional byte cTradeType;						//1内盘 2外盘
+		4 optional unsigned int uiPrice;
+		5 optional unsigned int uiVolume;
+		6 optional unsigned int uiBuyNo;
+		7 optional unsigned int uiSellNo;
+		8 optional unsigned int uiBargainNo;
+	};
+
+	struct JOrderRec
+	{
+		1 optional unsigned int uiTime;
+		2 optional unsigned int uiTradeNo;
+		3 optional unsigned int uiPrice;
+		4 optional unsigned int uiVolume;
+		5 optional byte cOrderKind;
+		6 optional byte cFunctionCode;
+		7 optional unsigned int uiOrderNo;
+	};
+
+	struct JOrderSumStat
+	{
+		1 optional unsigned int uiBuyAvgPrice;				//委托买入均价
+		2 optional long lBuyVol;							//委托买入总量(单位股)
+		3 optional unsigned short ushtBuyOrderCount;		//委托买入价位总数
+		4 optional unsigned int uiBuyNum;					//委托买入总笔数
+		5 optional long lBigBuyVol;							//委托大单买入总量(单位股)
+		6 optional unsigned int uiAllBuyNum;				//累计委托买入总笔数
+		7 optional unsigned int uiBuyCancelNum;				//委托买入撤单总笔数
+		8 optional unsigned int uiBigBuyCancelNum;			//委托大单买入撤单总笔数
+		9 optional unsigned int uiSellAvgPrice;				//委托卖出均价
+		10 optional long lSellVol;							//委托卖出总量(单位股)
+		11 optional unsigned short ushtSellOrderCount;		//委托卖出价位总数
+		12 optional unsigned int uiSellNum;					//委托卖出总笔数
+		13 optional long lBigSellVol;						//委托大单卖出总量(单位股)
+		14 optional unsigned int uiAllSellNum;				//累计委托卖出总笔数
+		15 optional unsigned int uiSellCancelNum;			//委托卖出撤单总笔数
+		16 optional unsigned int uiBigSellCancelNum;		//委托大单卖出撤单总笔数
+	};
+
+	struct JOrderQueuePrice
+	{
+		1 optional unsigned int uiPrice;				// 价位
+		2 optional long lSumVol;
+		3 optional long lBigSumVol;
+		4 optional unsigned int uiNumOfOrders;			// 总单数
+		5 optional byte cFlag;
+	};
+
+	struct JDxjl
+	{
+		1 optional unsigned int uiMsgType;		//单个消息类型
+		2 optional int iTime;					//时间，开盘的小时分钟和秒，小时两位：分钟两位：秒两位＝＝HHMMSS
+		3 optional int iSerialId;				// 序列号
+		4 optional short shtSetcode;			//市场
+		5 optional string sCode;				
+		6 optional string sMsg;					//消息内容，以逗号分隔
+	};
+
+	struct JOrderQueueItem
+	{
+		1 optional unsigned int uiVol;			// 委托单量
+		2 optional byte cStatus;				// 状态定义:ORDER_ITEM_STATUS
+	};
+
+	struct JOrderQueue
+	{
+		1 optional unsigned int uiTime;						// 时间
+		2 optional float fPrice;							// 价位
+		3 optional unsigned int uiVolume;					// 委托量
+		4 optional byte cBuySell;							// 买1/卖2
+		5 optional unsigned int uiNumOfOrders;				// 总单数
+		6 optional vector<JOrderQueueItem> vQueueItem;		//委托队列
+	};
+
+	//价位委托队列的委托变化
+	struct JOrderQueueItemOper
+	{
+		1 optional byte cStatus;				// 状态
+		2 optional unsigned int uiOrderNo;
+		3 optional unsigned int uiVol;			// 委托单量
+	};
+
+	struct JNewListReqItem
+	{
+		1 optional short shtType;
+		2 optional string sCode;
+	};
+	
+	//分时，日，多日资金流，Srv-Cli数据交互结构
+	struct JTolMoneyFlow
+	{
+		1 optional int iTime;				    //时间
+		2 optional short setcode;               //市场代码
+		3 optional string Code;                 //股票代码
+		4 optional float fSuperIn;				// 超大宗入  >50万股或者100万元
+		5 optional float fSuperOut;				// 超大宗出
+		6 optional float fBigIn;				// 大宗入		>10万股或者20万元
+		7 optional float fBigOut;				// 大宗出
+		8 optional float fMidIn;				// 中单入		>2万股或者4万元
+		9 optional float fMidOut;				// 中单出
+		10 optional float fSmallIn;				// 小单入		其他
+		11 optional float fSmallOut;			// 小单出
+	};
+	
+	struct JSMFRank
+	{
+		1 optional float m_fDDX1;
+		2 optional float m_fDDX5;
+		3 optional float m_fDDX60;
+		4 optional int m_intDDXRank1;
+		5 optional int m_intDDXRank5;
+		6 optional int m_intDDXRank60;
+	};
+	
+	struct JstkDaysMoneyFlow
+	{
+		1 optional short setcode;
+		2 optional string Code;
+		3 optional vector<JTolMoneyFlow> vDaysMFlow;
+	};
+	
+	struct JstkDDXMoneyFlow
+	{
+		1 optional short setcode;
+		2 optional string Code;
+		3 optional JTolMoneyFlow mfVol;//资金量数据
+		4 optional JTolMoneyFlow mfCount;//资金计数
+	};
+	
+	struct JstkHisDDXMoneyFlow
+	{
+		1 optional short setcode;
+		2 optional string Code;
+		3 optional vector<JTolMoneyFlow> vfVol;//资金量数据
+		4 optional vector<JTolMoneyFlow> vfCount;//资金计数
+	};
+	
+	//量，笔，额资金流数据结构
+	struct JSMoneyFlow
+	{
+        0 optional int iTime;				// 日期或者分钟时间，格式：YYMMDDhhmm
+		// 0: 小 1: 中 2: 大 3: 特大
+		1 optional vector<unsigned int> m_pdwNumOfBuy;	//买盘成交笔数
+		2 optional vector<unsigned int>	m_pdwNumOfSell; //卖盘成交笔数
+		3 optional vector<long>	m_pxVolOfBuy;	//买盘成交量
+		4 optional vector<long>	m_pxVolOfSell;	//卖盘成交量
+		5 optional vector<double>	m_pxAmtOfBuy;	//买盘成交额
+		6 optional vector<double>	m_pxAmtOfSell;	//卖盘成交额
+		7 optional vector<unsigned int> m_vecPasNumOfBuy;	//买盘成交笔数（被动资金流）,主动资金流类型里才会赋值
+		8 optional vector<unsigned int>	m_vecPasNumOfSell; 	//卖盘成交笔数（被动资金流）,主动资金流类型里才会赋值
+	};
+	
+	struct JSListData
+	{
+		//1 optional unsigned int	m_dwStockID;
+		2 optional string m_pCode;		//代码
+		3 optional byte	 m_nMarket;											// 市场信息
+		4 optional byte  m_nType;											// 证券类别
+		5 optional byte        m_cDecimal;										// 小数位数
+		6 optional unsigned int		m_dwOpen;                                           //开盘价
+		7 optional unsigned int		m_dwHigh;                                           //最高价
+		8 optional unsigned int		m_dwLow;                                            //最低价
+		9 optional unsigned int      m_dwClose;				                            //前收价
+		10 optional unsigned int		m_dwPrice;                                    
+		11 optional vector<unsigned int> m_dwBuy;                       //委买价
+		12 optional vector<unsigned int>      m_dwSell;                                           //委卖价
+		13 optional long		m_xVolume;
+		14 optional long		m_xAmount;
+ 		15 optional long		m_xCurVol;
+		16 optional byte		m_cCurVol;
+		17 optional unsigned int		m_dwLiangBi;
+		18 optional long		m_xWaiPan;	    								// 外盘
+		19 optional long		m_xNeiPan;										/// 内盘
+		20 optional long     m_xLTG;			// 流通股数
+		21 optional long     m_xSumVol2;	// 前2日成交量的和(算3日换手)
+		22 optional long     m_xSumVol5;	// 前5日成交量的和(算6日换手)
+		23 optional unsigned int      m_dw2Close;	// 2日前收盘价(算3日涨跌幅)
+		24 optional unsigned int      m_dw5Close;	// 5日前收盘价(算6日涨跌幅)
+		25 optional vector<unsigned int> m_pPrevPrice;
+		26 optional long     m_xSumAskVol;   //委买总量
+		27 optional long     m_xSumBidVol;   //委卖总量
+		28 optional vector<long>     m_xBuyVol;     //委买量
+		29 optional vector<long>     m_xSellVol;     //委卖伊?
+
+		//期货
+ 		30 optional long	    m_xPreOpenInterest;///昨持仓量
+		31 optional unsigned int	    m_dwPreSettlementPrice;///昨结算
+		32 optional long	    m_xOpenInterest;	//持仓量
+		33 optional unsigned int   m_dwSettlementPrice; ///今结算
+		34 optional long		m_xCurOI;	// 持仓量变化
+
+		//DDE
+		35 optional int       		m_intDDX;
+		36 optional int       		m_intDDY;
+		37 optional int       		m_intDDZ;
+		38 optional int       		m_intDDF;
+		39 optional int       		m_intDDX5;
+		40 optional int       		m_intDDY5;
+		41 optional int       		m_intDDX60;
+		42 optional int       		m_intDDY60;
+		43 optional int       		m_intDDXRedFollowDay;
+		44 optional int       		m_intDDXRedDay5;
+		45 optional int       		m_intDDXRedDay60;
+
+		//资金流明细
+		46 optional long	    		m_xValueCallAuction;
+		47 optional JSMoneyFlow		    m_day1;
+		48 optional JSMoneyFlow      m_day3;
+		49 optional JSMoneyFlow       m_day5;
+		50 optional JSMoneyFlow       m_day10;
+
+		//板块字段
+		51 optional int 	    		m_intAvgProfit;								// 平均收益
+		52 optional long     		m_xAvgShare;									// 平均股本
+		53 optional unsigned int 	    		m_dwTurnover;									// 换手率
+		54 optional unsigned int 	    		m_dw5AgvTurnover;								// 5日换手
+		55 optional int 	    		m_intDay5Percent;								// 5日涨跌
+		56 optional long     		m_xZSZ;											// 总市值
+		57 optional long     		m_xLTSZ;										// 流通市值
+		58 optional int 	    		m_intPeRatio;									// 市盈率
+		59 optional unsigned int 	    		m_dwStockNum;									// 股票个数
+		60 optional unsigned int 	    		m_dwUpNum;                                    	// 上涨个数
+		61 optional unsigned int 	    		m_dwDownNum;									// 下跌个数
+		62 optional int 	    		m_dwUpDay;									    // 连涨天数s
+
+		//期权
+		63 optional vector<int>				m_pOptVal;	//期权特有:隐含波动率,5个希腊值
+		64 optional vector<int> 				m_pVolatility;	//标的股票的历史波动率
+		65 optional unsigned int				m_dwNorminal;	// 理论价格
+		66 optional vector<byte>    			m_pOptStatus; //状态
+		67 optional unsigned int 	    		m_dwBdStock;	// 标的股,领涨股
+		68 optional unsigned int				m_dwBdPrice;	//标的最新价
+
+		69 optional int 	    		m_dwDK;			//DK点
+
+		70 optional int   			m_nZczb1;	//当日增仓占比
+		71 optional int   			m_nZczb3;	//三日增仓占比
+		72 optional int   			m_nZczb5;	//五日增仓占比
+		73 optional int   			m_nZczb10;	//十日增仓占比
+		74 optional unsigned int		        m_dwItemNum; //分笔数
+		75 optional long             m_xVolBase;// 量比基量
+	};
+	
+	struct Jbc_date
+	{
+		1 optional unsigned short da_year;
+		2 optional byte da_day;
+		3 optional byte da_mon;
+	};
+	
+	struct Jbc_time
+	{
+		1 optional byte ti_min;
+		2 optional byte ti_hour;
+		3 optional byte ti_hund;
+		4 optional byte ti_sec;
+	};
+	
+	struct Jhostmore
+	{
+		1 optional byte errflag;
+		2 optional short setcode;
+		3 optional Jbc_date date;
+		4 optional Jbc_time time;
+		5 optional int infdate;
+		6 optional int infhms;
+		7 optional byte bserv1;
+		8 optional byte bserv2;
+		9 optional byte bserv3;
+		10 optional byte nUrgentNum;
+		11 optional byte linuxcheck;
+		12 optional byte bbigjbm;
+		13 optional byte b5mmp;
+		14 optional byte bcanuserurgent;
+		15 optional byte hasBakHostFile;
+		16 optional byte webpage;
+		17 optional string hostname;
+		18 optional string checksum;
+	};
+	
+	struct Jhostmore1
+	{
+		1 optional byte errflag;
+		2 optional Jbc_date date;
+		3 optional Jbc_time time;
+		4 optional vector<short> sz;
+		5 optional vector<short> sh;
+		6 optional byte byesterday;
+		7 optional int szinfdate;
+		8 optional int szinfms;
+		9 optional int shinfdate;
+		10 optional int shinfms;
+		11 optional byte bserv1;
+		12 optional byte bserv2;
+		13 optional byte bserv3;
+		14 optional byte nUrgentNum;
+		15 optional byte linuxcheck;
+		16 optional byte bbigjbm;
+		17 optional byte b5mmp;
+		18 optional byte bcanuserurgent;
+		19 optional byte hasBakHostFile;
+		20 optional byte webpage;
+		21 optional string hostname;
+		22 optional string byesterdays;
+		23 optional string url;
+	};
+	
+	struct Jhostmore2
+	{
+		1 optional byte errflag;
+		2 optional short setcode;
+		3 optional Jbc_date date;
+		4 optional Jbc_time time;
+		5 optional vector<short> common;
+		6 optional vector<short> qt;
+		7 optional byte byesterday;
+		8 optional int infdate;
+		9 optional int infms;
+		10 optional byte bserv1;
+		11 optional byte bserv2;
+		12 optional byte bserv3;
+		13 optional byte nUrgentNum;
+		14 optional byte linuxcheck;
+		15 optional byte bbigjbm;
+		16 optional byte b5mmp;
+		17 optional byte bcanuserurgent;
+		18 optional byte hasBakHostFile;
+		19 optional byte webpage;
+		20 optional string hostname;
+		21 optional string byesterdays;
+		22 optional string url;
+	};
+	
+	struct Jhostmoreitem
+	{
+		1 optional short setcode;
+		2 optional int infdate;
+		3 optional int infhms;
+	};
+	
+	struct Jhostmoreall
+	{
+		1 optional byte errflag;
+		2 optional Jbc_date date;
+		3 optional Jbc_time time;
+		4 optional byte bserv1;
+		5 optional byte bserv2;
+		6 optional byte bserv3;
+		7 optional byte nUrgentNum;
+		8 optional byte linuxcheck;
+		9 optional byte bbigjbm;
+		10 optional byte b5mmp;
+		11 optional byte bcanuserurgent;
+		12 optional byte hasBakHostFile;
+		13 optional byte webpage;
+		14 optional short num;
+	};
+	
+	
+	struct JRegMarketCPTMinAns
+	{
+		1 optional short           setcode;
+		2 optional unsigned int    dwTradeSequence;
+		3 optional unsigned int    dwTradeDate;
+		4 optional unsigned int    dwTradeTime;
+	};
+	
+	struct JMarketInitInfo
+	{
+		1 optional short           setcode;
+		2 optional unsigned int    dwTradeSequence;
+		3 optional unsigned int    dwTradeDate;
+	};
+	
+	struct JOtherinfo
+	{
+		1 optional int  ClientNum;
+		2 optional int  MaxConnectNum;
+		3 optional int PackageNum;
+		4 optional byte HasStatus;
+		5 optional byte HasLog;
+		6 optional byte bHQ;
+		7 optional byte bWT;
+		8 optional string starttime;
+		9 optional string HostVer;
+		10 optional byte ProtocolVer;
+		11 optional int HisMaxClientNum;
+		12 optional int UsedClientNum;
+		13 optional byte bAutoBase;
+		14 optional string HomePath;
+		15 optional string NetCardStr;
+		16 optional int InfDate;
+		17 optional int InfHms;
+		18 optional byte HostType;
+		19 optional byte ProcType;
+		20 optional byte ZlibType;
+		21 optional byte bDayToMem;
+		22 optional byte bWeekToMem;
+		23 optional byte bMonToMem;
+		24 optional byte bMinToMem;
+		25 optional byte bKExplain;
+		26 optional byte bAlarm;
+		27 optional byte bHqStat;
+		28 optional byte bCanOldFy;
+		29 optional byte bCanDos;
+		30 optional byte bCanTdxW;
+		31 optional byte bCanWeb;
+		32 optional byte bCanPda;
+		33 optional byte bCanWide;
+		34 optional byte bCanPlay;
+		35 optional byte bCanJdh;
+		36 optional byte bTapi;
+		37 optional byte bUdp;
+		38 optional byte bChat;
+		39 optional short RecSocket;
+		40 optional short UdpSocket;
+		41 optional short ProcessNum;
+		42 optional short ThreadNum;
+		43 optional short unused1;
+		44 optional byte  TicFlag;
+		45 optional byte  MtcFlag;
+		46 optional string  unused2;
+	};
+	
+	struct JZhReSult
+	{
+		1 optional int		Num;
+		2 optional vector<byte> SetCode;
+		3 optional vector<string>	Code;
+		4 optional vector<float>	Now;
+		5 optional vector<float>	Other;
+	};
+	
+	struct JCwData //除权数据结构
+	{
+		1 optional int iDate;
+		2 optional byte ucType;
+		3 optional float fB01;
+		4 optional float fB02;
+		5 optional float fB03;
+		6 optional float fB04;
+	};
+	
+	//个股除权数据结构
+	struct JStockCwData
+	{
+		1 optional byte ucSetcode;
+		2 optional string sCode;
+		3 optional vector<JCwData> vCwData;
+		
+	};
+	
+	struct JRemoteBaseInfo	//Protocol Change
+	{
+		1 optional byte	ucSetcode;			//市场类型
+		2 optional string sCode;            // 证券代码
+		3 optional float fActiveCapital;      //流通股本
+		4 optional short shtJAddr;				//所属省份
+		5 optional short shtJHy;				//所属行业
+	    6 optional int iGxrq;				//更新日期
+		7 optional int iStart;			//上市日期
+	    8 optional float fZgb;				//总股本
+	    9 optional float fGjg;				//国家股
+	    10 optional float fFqrfrg;			//发起人法人股
+	    11 optional float fFrg;				//法人股
+	    12 optional float fBg;				//B股
+	    13 optional float fHg;				//H股
+	    14 optional float fZgg;				//职工股
+	    15 optional float fZzc;				//总资产(千元)
+	    16 optional float fLdzc;				//流动资产
+	    17 optional float fGdzc;				//固定资产
+	    18 optional float fWxzc;				//无形资产
+	    19 optional float fCqtz;				//长期投资
+	    20 optional float fLdfz;				//流动负债
+	    21 optional float fCqfz;				//长期负债
+	    22 optional float fZbgjj;			//资本公积金
+	    23 optional float fJzc;				//股东权益(就是净资产)
+	    24 optional float fZysy;				//主营收入
+	    25 optional float fZyly;				//主营利益
+	    26 optional float fQtly;				//其它利益
+	    27 optional float fYyly;				//营业利益
+	    28 optional float fTzsy;				//投资收益
+	    29 optional float fBtsy;				//补贴收入
+	    30 optional float fYywsz;			//营业外收支
+	    31 optional float fSnsytz;			//上年损益调整
+	    32 optional float fLyze;				//利益总额
+	    33 optional float fShly;				//税后利益
+	    34 optional float fJly;				//净利益
+	    35 optional float fWfply;			//未分配利益
+	    36 optional float fTzmgjz;			//调整每股净资产 物理意义:  净资产/调整后的总股本
+		37 optional float fHalfYearFlag;		//全部更改为以月为单位
+	};
+};

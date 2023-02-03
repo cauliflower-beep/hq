@@ -1,0 +1,291 @@
+module MCvt
+{
+    enum MQT_Trade_Flag
+    {
+        ////以下为通用状态
+        MTF_TRADING         = 0,    //交易中（港股：3）
+        MTF_CLOSED          = 1,    //已收盘（港股：0）
+        
+        MTF_UNOPEN          = 3,    //未开盘（港股：100）
+        MTF_OPEN_AUCTION    = 4,    //开盘集合竞价（港股：2，时段：9:20~9:28，POS：09：20~09：22即随机对盘随机结束后立即开始对盘）
+        MTF_REST            = 5,    //中间休市(港股：103，时段：12:05~12:30)
+        MTF_CLOSE_AUTION    = 6,    //收盘集合竞价（港股：4）
+        MTF_CLOSING         = 7,    //收盘中(港股：16:06)
+        MTF_TRADING_HALT    = 8,    //停牌
+        MTF_TEMP_HALT       = 10,   //临时停牌
+        
+        //////美股特有状态
+        MTF_PRE_TRADE       = 11,     //盘前交易，
+        MTF_POST_TRADE      = 12,     //盘后交易
+        
+        
+        ////港股特有状态
+        MTF_PRE_TRADE_ORDER = 20,   //港股（1）：输入买卖盘时段： 9：00 ~ 9:15
+        MTF_NO_CANCEL       = 21,   //港股（101）：不可取消时段9:15 ~ 9:20
+        MTF_BLOCKING        = 22,   //港股（7）：暂停状态 9:28~9：30，对于POS的证券时间为9:22~9：30
+        MTF_INTERVERTION    = 23,   //港股（102）：交易所干预(通常是半日交易时用于收盘)：12：00~12：05
+        MTF_ORDER_CANCEL    = 24,   //港股（104）：订单可取消12：30~13：00
+        MTF_PRICE_FIXING    = 25,   //港股（105）：价格纠正16：00~16:01
+        MTF_POST_TRADE_ORDER= 26,   //港股（5）：盘后下单16：01~16:06
+        MTF_POST_NO_CANCEL  = 27,   //港股（106）：盘后：不可撤销16:06
+        MTF_RANDOM_CLOSE    = 28,   //港股（107）：随机收盘16:06
+        
+        MTF_DELISTED        = 30,   //已退市  
+        MTF_UPCOMING        = 31,   //等待开盘 
+        MTF_NOONTIME        = 32,   //午休
+        
+        MTF_POS_RANDOM_MATCHING = 33,   //港股POS（108）：随机对盘09：20~09：22  
+        MTF_UNKNOWN         = 99,       //未知状态 
+    };    
+
+    //权证类型
+    enum MQT_HK_WARRANT_TYPE
+    {
+        MHWT_CALL   = 1,    //认购
+        MHWT_PUT    = 2,    //认沽
+        MHWT_BULL   = 3,    //牛证
+        MHWT_BEAR   = 4,    //熊证
+    };
+    
+    struct MStdQuoteBasic
+    {
+        0 optional double       dOpen;  //开盘价
+        1 optional double      dHigh;  //最高价
+        2 optional double      dLow;   //最低价
+        3 optional double      dPrice; //最新价
+        4 optional double      dClose; //前日收盘价
+    
+        5 optional long        lVolume;  //成交量
+        6 optional double      dAmount;  //成交额  注：dbf中没有
+        7 optional long        lTradeNum;//成交笔数 注：dbf中没有
+        8 optional double      dAvgPrice;  //均价        
+    };
+    
+    struct MStdQuotePankou
+    {
+        0 optional vector<double>  vAsk;    //卖价
+        1 optional vector<long>    vAskVol; //卖量
+        2 optional vector<int>    vAskNum;  //卖家个数
+        3 optional vector<double>  vBid;    //买价
+        4 optional vector<long>    vBidVol; //买量
+        5 optional vector<int>    vBidNum;  //买家个数
+    };
+    
+    // 港股扩展行情
+	struct MStdHKQuoteExt
+	{
+		0 optional int       iBitFlag = 0;                // 位标识，从低到到高，0x01：参与收市竞价；0x02：参与市场波动调节机制；0x04：参与收市竞价交易；    
+		1 optional double    dBalancePrice = 0.0;         // 参考平衡价格
+		2 optional long      lBalanceVol = 0;             // 参考平衡量
+		3 optional double    dReferencePrice = 0.0;       // 参考价格
+		4 optional double    dOpenLowLimitPrice = 0.0;    // 开盘最低价格限制
+		5 optional double    dOpenHighLimitPrice = 0.0;   // 开盘最高价格限制
+		6 optional double    dLowLimitPrice = 0.0;        // 最低价格限制
+		7 optional double    dHighLimitPrice = 0.0;       // 最高价格限制
+		8 optional byte      cDirection = 0;              // 参考平衡价方向，0：不可用；1：买=卖；2：买入盈余；2：卖出盈余；
+		9 optional long      lImbalanceVol = 0;           // 参考平衡价的不平衡数量
+	};
+	
+	//板块指数信息
+	struct MStdBlkIndexExt
+	{
+		0 optional int 	iUpNum =  0;	    //上涨家数 板块指数才会赋值
+		1 optional int 	iDownNum = 0;		//下跌家数 板块指数才会赋值
+		2 optional int 	iEqualNum = 0;		//平盘家数 板块指数才会赋值
+	};
+    
+    struct MStdQuoteMore
+    {
+        0 optional double          dPriceZT;       // 涨停价，美股为52周最高价
+        1 optional double          dPriceDT;       // 跌停价，美股为52周最低价
+        
+        2 optional long            lWaiPan;        //所谓卖盘就是卖出价成交，成交价为申卖价，说明买盘比较积极
+        3 optional long            lCurVol;        //现手
+        4 optional double          dCurAmt;     // 现额
+        5 optional byte            cCurVolDirect;     //现手方向
+        6 optional long            lOpenInterest;    //持仓量
+        7 optional double          dSettlementPrice; //今结算价
+        8 optional long            lPreOpenInterest;///昨持仓量
+        9 optional double          dPreSettlementPrice;///昨结算价
+        10 optional long           lCurOI;     //持仓量变化
+        11 optional int 	       tradeUnit;		//每手股数
+        12 optional long           lNeiPan;                 //内盘
+        13 optional long           lMidPan;                 //中性盘
+        14 optional bool           bLXBD = false;           //当前期货连续品种的标的
+    };
+    
+    struct MStdQuote
+    {
+        0 optional string sUniqId; //唯一标识
+        1 optional unsigned short shtMarket; //市场编号
+        2 optional unsigned short shtType;      //类型，取PeekQuote中的srcType或者根据配置生成
+        3 optional string sCode;
+        4 optional string sName;
+        5 optional string sMarketName;  //市场名称
+        6 optional unsigned int uiDate; //交易日YYYYMMDD
+        7 optional unsigned int uiTime; //交易时间hhmmss
+        8 optional int iTradeFlag;  //交易标志, 参照MQT_Trade_Flag
+        9 optional MStdQuoteBasic stBasic;  //基本价格
+        10 optional MStdQuotePankou stPankou; //盘口信息: 买卖十档
+        11 optional MStdQuoteMore stMore;
+        12 optional MStdHKQuoteExt stHKExt;  //港股扩展行情
+        13 optional MStdBlkIndexExt stIndexExt;    //板块指数行情
+        14 optional vector<byte> vecDeriveExt;      //其他扩展行情 统一放这里 二进制字节流 对应对应commondata.jce里的HPeekDeriveData
+        15 optional bool bDeriveDataCompress = false;	//vecDeriveExt数据 是否压缩标识，一旦开了压缩，下游需要先解压再解析
+		16 optional string sCodeExt;                    //扩展code，目前主要用于郑商所 跟所有的套利合约
+		17 optional string sNameExt;                    //扩展名称
+    };
+    
+    struct MStdQuoteDiff
+    {
+        1 optional MStdQuote stQuote;
+        2 optional bool bIsDiff = true;   //数据是否已经差量
+    };
+    
+    //网络传输包
+    struct MStdQuoteTransfer
+    {
+        1 optional vector<MStdQuoteDiff> vQuoteDiff;
+    };
+
+    struct MStdBrokerQueue
+    {
+        0 optional string sUniqId; //唯一标识
+        1 optional unsigned short shtMarket; //市场编号
+        2 optional string sCode; //股票代码
+        3 optional string sMarketName;  //市场名称
+
+        4 optional map<int, vector<string> > buySide;	// level对应的买方经纪人列表
+		5 optional map<int, vector<string> > sellSide;	// level对应的卖方经纪人列表
+    };
+
+    struct MStdBrokerQueueTransfer
+	{
+		1 optional vector<MStdBrokerQueue> vBrokerQueue;
+	};
+
+    //逐笔成交
+    struct MStdTrans
+    {
+        1 optional unsigned int iTransId;       // 编号
+        2 optional unsigned int iDate;          // 交易日YYYYMMDD
+        3 optional unsigned int iTime;          // 交易时间hhmmss
+        4 optional double dPrice;               // 价格
+        5 optional unsigned int iVolume;        // 成交量
+        6 optional short shtType;               // 类型，0：自动对盘；4：开市前成交盘；22：非自动对盘；100：同一证券商自动对盘；101：同一证券商非自动对盘；102：碎股交易；103：竞价交易；104：海外交易
+        7 optional byte cDirection;             // 方向，0：中性盘；1：内盘(主卖)；2：外盘(主买)
+    };
+    
+    struct MStdTransDiff
+    {
+        0 optional string sUniqId; //唯一标识
+        1 optional vector<MStdTrans> vTrans;
+        2 optional bool bIsDiff = true;   //数据是否已经差量
+    };
+
+    //网络传输包
+    struct MStdTransTransfer
+	{
+		1 optional vector<MStdTransDiff> vTransDiff;
+        2 optional bool bClear = false; //重置标识
+	};
+
+    //静态数据
+    struct MStdStaticData
+    {
+        1 optional string sKey;     //静态数据key，用于按指定格式解析data
+        2 optional string sData;    //静态数据内容，可以为文本，json，序列化等，需要接收端解析
+    };
+
+    //网络传输包
+    struct MStdStaticDataTransfer
+	{
+		1 optional vector<MStdStaticData> vTrans;   //静态数据
+        2 optional bool bClear = false; //重置标识
+	};
+	
+	struct MStdFundFlow
+	{
+		0 optional double dSmallIn = 0.0f;            // 小单入
+		1 optional double dSmallOut = 0.0f;           // 小单出
+		2 optional double dSmallNeutral = 0.0f;       // 中性小单
+		3 optional double dMiddleIn = 0.0f;           // 中单入
+		4 optional double dMiddleOut = 0.0f;          // 中单出
+		5 optional double dMiddleNeutral = 0.0f;      // 中性中单
+		6 optional double dBigIn = 0.0f;              // 大单入
+		7 optional double dBigOut = 0.0f;             // 大单出
+		8 optional double dBigNeutral = 0.0f;         // 中性大单
+		9 optional double dSuperBigIn = 0.0f;         // 超大单入
+		10 optional double dSuperBigOut = 0.0f;       // 超大单出
+		11 optional double dSuperBigNeutral = 0.0f;   // 中性超大单
+	};
+	
+	struct MStdFundFlowUnit
+	{
+		0 optional unsigned int iTime;         // 日级别格式：YYYYMMDD；分钟级别格式：YYMMDDHHmm
+		1 optional string sUniqueID;           // 股票标识
+		2 optional MStdFundFlow num;           // 笔数
+		3 optional MStdFundFlow vol;           // 成交量
+		4 optional MStdFundFlow amt;           // 成交额
+	};
+	
+	// 分钟资金流
+	struct MStdStockMinFlList
+	{
+		0 optional bool	bClear = false;
+		1 optional string sUniqueID; 
+		2 optional vector<MStdFundFlowUnit> vData;
+	};
+	
+	// 分钟资金流数组
+	struct MStdStockMinFlBatchList
+	{
+		0 optional vector<MStdStockMinFlList> vStock;
+	};
+	
+	
+	// 日资金流
+	struct MStdStockDayFl
+	{
+		0 optional string sUniqueID; 
+		1 optional MStdFundFlowUnit data;
+	};
+
+    // 新分时数据结构，数据同旧分时结构 CStdRtMin
+    struct MStdRtMin
+    {
+        0 optional string sUniqId;     // 唯一标识
+        1 optional unsigned int iTime; // 时间
+
+        2 optional long lOpen;      // 开盘价
+        3 optional long lHigh;      // 最高价
+        4 optional long lLow;       // 最低价
+        5 optional long lClose;     // 收盘价
+        6 optional long lAve;       // 均价
+
+        7 optional long lVolume;            // 成交量
+        8 optional long lAmount;            // 成交额
+        9 optional unsigned int iTradeNum;  // 成交笔数
+        10 optional long lWaiPan;           // 外盘
+
+        11 optional long lExt1;      // 期货为持仓量，其他无
+        12 optional long lExt2;      // 期货为增仓，其他无
+
+        13 optional long lBuyVol;    // 委买总量
+        14 optional long lSellVol;   // 委卖总量
+    };
+
+    struct MStdRtMinDiff
+    {
+        0 optional string sUniqId; //唯一标识
+        1 optional vector<MStdRtMin> vRtMin;
+        2 optional bool bIsDiff = true;   //数据是否已经差量
+        3 optional bool bClear = false;   //重置标识
+    };
+
+    //网络传输包
+    struct MStdRtMinTransfer
+    {
+        0 optional vector<MStdRtMinDiff> vRtMinDiff;
+    };
+};

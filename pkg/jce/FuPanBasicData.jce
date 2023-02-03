@@ -1,0 +1,286 @@
+module FuPan
+{  
+    //以下是复盘对接 复盘指标主站 类型，int类型 4个字节分了高字节（服务名类型，目前只有ztcalc），次高字节（模块名），低位2个字节为模块内部子类型
+    enum E_FUPAN_SERVER_TYPE
+    {
+        E_FUPAN_CALC_SERVER = 1,    //calc  服务
+        E_FUPAN_QUERY_SERVER,   //query 服务
+    };
+    //fupan模块类型
+    enum E_FUPAN_MODEL_TYPE
+    {
+        E_FUPAN_STOCKPOOL_MODEL = 1,      //股票池模块
+        E_FUPAN_HISFACTOR_MODEL,      //历史因子模块
+        E_FUPAN_MARKETTREND_MODEL,    //市场风向模块
+        E_FUPAN_LISTBLOCK_MODEL,      //板块模块
+
+        //TODO: 后续根据业务，在这里添加类型
+    };
+
+    //股票信息
+    struct StockInfo
+    {
+        1 optional short shtSetcode = 0;        //市场
+        2 optional string sCode;                //股票代码
+    };
+    //股票信息 精简版
+    struct StkInfo
+    {
+        1 optional short shtMarket = 0;               //市场
+        2 optional string code;                //股票代码
+    };
+    struct StkSimpInfo
+    {
+        0 optional int iMarket = 0;
+        1 optional string sCode;
+        2 optional string sName;
+        3 optional double dZdf;//涨跌幅 
+    };
+    //过滤类型
+    enum E_STOCK_FILTER_TYPE
+    {
+        E_STOCK_ALL = 0,                //全部
+        E_STOCK_FILTER_ST,              //过滤ST
+        E_STOCK_FILTER_NEWSTOCK,        //过滤未开板新股
+        E_STOCK_FILTER_ST_NEWSTOCK,     //过滤ST跟未开板新股
+        E_STOCK_FILTER_KCB,             //过滤科创板
+        E_STOCK_FILTER_ST_NEWSTOCK_KCB, //过滤ST和科创板
+    };
+    
+    //股票池类型
+    enum E_STOCK_POOL_TYPE
+    {
+        E_STOCK_ZT_POOL = 0,            //涨停池
+        E_STOCK_ONE_POOL,               //一字板池
+        E_STOCK_T_POOL,                 //T字板池
+        E_STOCK_CHANGE_POOL,            //换手板池
+        E_STOCK_OPEN_POOL,              //开板池 4
+        E_STOCK_STRONG_POOL,            //强势股池 5
+        E_STOCK_COMP_POOL,              //竞价试盘池 6
+        E_STOCK_LASTZT_POOL,            //昨日涨停池 7
+
+        E_STOCK_DT_POOL,                //跌停池 8
+        E_STOCK_DT_OPEN_POOL,           //跌停破板池 9
+        E_STOCK_FANBAO_ZT_POOL,         //反包涨停池 10
+        E_STOCK_HIT_BOARD_POOL,         //打板池 11
+        E_STOCK_BARGAIN_HUNTING_POOL,   //低吸池 12
+        E_STOCK_LAST_FANBAO_POOL,       //昨日反包池(行情字段用最新的) 13
+	    E_STOCK_HX_TRIALBOARD_POOL,	    //黄线试板池
+	    E_STOCK_NINEMON_NEW_POOL,	    //9月新股池	
+        E_STOCK_LB_POOL,                //烂板池 16
+        E_STOCK_HX_POOL,                //黄线池 17             
+        E_STOCK_PRICE_ABOVE_8_POOL,     //大涨股池 18
+        E_STOCK_BLUE_LINE_POOL,         //蓝线池 19
+        E_STOCK_POOL_TYPE_END,          //结束符 无意义,用来遍历涨停类型
+    };
+
+    //涨停类型
+    enum E_STOCK_ZT_TYPE
+    {
+        E_STOCK_ZT_UNKNOWN,     //未知类型
+        E_STOCK_COMP_ZT,        //集合竞价涨停
+        E_STOCK_ONE_BOARD,      //一字板
+        E_STOCK_T_BOARD,        //T字板
+        E_STOCK_CHANGE_BOARD,   //换手板
+        E_STOCK_OPEN_BOARD,     //开板池
+    };
+
+    //涨停标签类型
+    //涨停标签
+	enum E_ZT_TAG_TYPE
+	{
+		E_ZT_TAG_ALL,
+		E_ZT_TAG_ONE_BOARD,			//一字板 1	//盘中标签
+		E_ZT_TAG_NUCLEAR_BUTTON,	//核按钮 //非涨停 2
+		E_ZT_TAG_SEC_BOARD,			//秒板 3
+		E_ZT_TAG_CALL_AUCTION_RUSH,	//竞价抢筹 4 //非涨停
+		E_ZT_TAG_LAN_BOARD, 		//烂板 5
+		
+		E_ZT_TAG_OLD_DRAGON_RALLY,	//老龙头反抽 6
+		E_ZT_TAG_OPEN_BOARD_ZT,		//炸板涨停 7
+		E_ZT_TAG_FAN_BAO_ZT,		//反包涨停 8
+		
+		E_ZT_TAG_HIGH_HUNDRED,		//百日新高 9  //盘后标签
+		E_ZT_TAG_DAMIAN,			//大面 10 //非涨停
+		E_ZT_TAG_DALONGLEG,			//大长腿 11 //非涨停
+		E_ZT_TAG_VOL_UP,			//放量 12
+		E_ZT_TAG_VOL_DOWN,			//缩量 13
+		E_ZT_TAG_SMALL_STOCK,		//小盘股 14
+		
+		E_ZT_TAG_WEIGHTED_UP,		//权重股拉升 //非涨停 15
+		E_ZT_TAG_WEIGHTED_DOWN,		//权重股杀跌 //非涨停 16
+		E_ZT_TAG_UNKNOW,			//未知标签 17
+
+        E_ZT_TAG_GRFB,              //隔日反包 18 //涨停标签
+        E_ZT_TAG_HX,                //黄线涨停  19 //涨停标签
+        E_ZT_TAG_HHB,               //红黄白涨停 20 //涨停标签
+
+        //添加涨停标签
+        E_ZT_TAG_ABOVE_8_POOL,     //大涨股池 
+        E_ZT_TAG_BLUE_LINE_POOL,   //蓝线池
+        
+		E_ZT_TAG_END,	//
+	};
+	
+    //反包类型
+    enum E_STOCK_FB_TYPE
+    {
+		E_STOCK_UNKNOWN_FANBAO = 0,//未知类型
+        E_STOCK_TP_FANBAO,  	//突破反包
+        E_STOCK_FT_FANBAO,      //反弹反包
+        E_STOCK_ZD_FANBAO,      //震荡反包
+		E_STOCK_YTP_FANBAO,		//预突破反包
+		E_STOCK_YFT_FANBAO,		//预反弹反包
+		E_STOCK_YZD_FANBAO,		//预震荡反包
+    };
+
+    //板块类别
+    enum E_BLOCK_CLASS_TYPE
+    {
+        E_BLOCK_INDUSTRY = 0,   //行业
+        E_BLOCK_AREA,           //地域
+        E_BLOCK_CONCEPT,        //概念
+        E_BLOCK_OTHER,          //其他
+    };
+    //板块信息
+    struct FBlockSimpleInfo
+    {
+        0 optional int iMarket;                                 //市场
+        1 optional string sCode;                                //板块代码
+        2 optional E_BLOCK_CLASS_TYPE eType = E_BLOCK_OTHER;    //类别
+        3 optional string sName;                                //名字，会落地，避免改名 退市，等各种历史问题显示不了
+    };
+    
+    // 开板明细（不是涨停封板的期间，而是两个涨停之间）===》》产品需求变更为 封板明细 涨跌停封板期间信息
+    struct FOpenBoardDetail
+    {
+        0 optional int      iZDTTime;           //涨跌停时间
+        1 optional int      iZDTOpenTime;       //涨跌停打开时间
+        2 optional double   dLowRatio;          //持续时间内最低涨幅 ==》》改为封板明细后 该字段实际上没意义了
+        3 optional long     lFirstZDTVol;       //首次封单量
+        4 optional double   dFirstZDTRatio;     //首次封成比
+        5 optional long     lLastZDTVol;        //最后封单量
+        6 optional double   dLastZDTRatio;      //最后封成比
+        7 optional long     lHighZDTVol;        //最高封单量  从涨跌停到打开期间最高的买1量
+        8 optional double   dHighZDTRatio;      //最高封成比  最高封单量/封单量最高时刻成交量
+    };
+
+    struct FBoardPeriod
+    {
+        0 optional int iStrongWeakNum;  //强势天数（参考强势股逻辑，原来逻辑为：涨幅大于5%的连续天数，已废弃)
+        1 optional int iZDTNum;      //收盘涨停天数
+        2 optional int iOneNum;     //一字板天数
+    };
+
+    //历史涨停信息
+    struct StockZDTHisDate
+    {
+        0 optional int market;
+        1 optional string sCode;
+        2 optional vector<int> setZtDays;    //近31天里涨停的日期
+        3 optional vector<int> setOneZtDays; //近31天里一字涨停的日期
+
+        4 optional vector<int> setDtDays;    //近31天里跌停的日期
+        5 optional vector<int> setOneDtDays; //近31天里一字跌停的日期
+    };
+
+    struct FZDStockInfo
+    {
+        0 optional int iMarket;                         //市场
+        1 optional string sCode;                        //代码
+        2 optional double dNowPrice;                    //最新价
+        3 optional double dChgRatio;                    //涨跌幅
+        4 optional double dTurnOver;                    //换手率
+        5 optional double dAvgTurnOver;                 //日均换手率
+        6 optional int iLastZDTime;                     //最后涨跌停时间
+        7 optional int iFirstZDTime;                    //首次涨跌停时间
+        8 optional long lLastZDTVol;                    //封板期间 最后封单量，当日最新涨停时刻的买一(跌停 就是卖一)档委托量
+        9 optional double dLastZDTRatio;                //封板期间 最后封成比,最后封单量/成交量
+        10 optional double dFloatValue;                 //流通市值
+        11 optional int iContinueBoard;                 //连板数
+        12 optional int iDetailNum;                     //开板数
+        13 optional vector<FOpenBoardDetail> vecDetail; //当天开板明细
+        14 optional FBoardPeriod stBoard;               //几天几板
+        15 optional E_STOCK_ZT_TYPE eType;              //涨停类型 
+        16 optional int iDate;                          //当前行情交易日
+        17 optional double dPrevRatio;                  //昨日涨跌幅，目前只有竞价股用到
+        18 optional bool bIsZt = false;                 //是否涨停，用买一价和涨停价比较
+        19 optional bool bUnOpenNewStock = false;       //未开盘新股
+        20 optional bool bIsST = false;                 //是否为ST
+        21 optional bool bSubNewStock = false;          //是否为次新股
+        22 optional string strStockZTReason;            //涨停原因
+        23 optional vector<FBlockSimpleInfo>vecBlk;     //对应板块信息 全部,包括行业 地域 概念，带标识区分
+        24 optional double dTotalMarketValue;           //总市值
+        25 optional bool bIsDt = false;                 //是否跌停
+        26 optional int  nStockZTReasonUpdateTime;      //涨停原因更新时间戳 透传
+        27 optional vector<string> vRelatedPlates;      //涨停原因 关联板块(爬虫)
+        28 optional double dHighPrice;                  //当天最高价
+        29 optional double dLowPrice;                   //当天最低价
+        30 optional double dZTAmount;                   //涨停盘口金额
+        31 optional double dOpenChgRatio;               //开盘涨幅
+        32 optional bool bIsKcb =false;                 //是否为科创板
+        33 optional E_STOCK_FB_TYPE eFBType;            //反包类型
+        34 optional int iZDTOpenTimeTotal;              //累计涨跌停打开时间
+        35 optional vector<E_ZT_TAG_TYPE> vecZTTag;     //涨停标签
+        36 optional double dPreTurnOver;                //昨日换手率
+        37 optional int iLastZTDate;                    //反包池最近涨停日期
+        38 optional int iLastZTDateCbNum;               //反包池最近涨停日期连板数
+        39 optional double dOpenAmount;                 //开盘成交额(9:15~9:30)
+    };
+
+    struct FPoolMapInfo
+    {
+        0 optional map<string, FZDStockInfo> stockMap;
+        1 optional long lRefreshTime;
+        2 optional int nDate;
+    };
+
+    struct FStockZTData
+    {
+        0 optional double dZTPrice = 0.0;          //涨停价
+        1 optional double dDTPrice = 0.0;          //跌停价
+        2 optional double dTurnover = 0.0;         //换手率
+        3 optional double dZdf = 0.0;              //涨跌幅
+    };
+
+    struct FupanZTStockLabelInfo
+    {
+        0 optional int iMarket;                        //市场
+        1 optional string sCode;                       //代码
+        2 optional int iContinueBoard;                 //连板数
+        3 optional FBoardPeriod stBoard;               //几天几板
+        4 optional int iDate;                          //当前行情交易日
+        5 optional bool bIsZt = false;                 //是否涨停，用买一价和涨停价比较
+        6 optional bool bUnOpenNewStock = false;       //未开盘新股
+        7 optional bool bIsDt = false;                 //是否跌停
+        8 optional int iFirstZDTime;                   //首次涨跌停时间     
+        9 optional E_STOCK_ZT_TYPE eType;              //涨停类型   
+    };
+
+    struct FZTLabelPoolMapInfo
+    {
+        0 optional map<string, FupanZTStockLabelInfo> stockMap;
+        1 optional long lRefreshTime;
+    };
+
+    struct FupanZTLabelHisData
+    {
+        0 optional int                                      iLastDate = 0;      //上个交易日   
+        1 optional map<string, StockZDTHisDate>             mapZDtHisDate;      //历史涨停日期集合 不包含当天
+        2 optional vector<FupanZTStockLabelInfo>            vecPreZTStock;      //昨日涨停个股集合 
+        3 optional map<string, map<int,FStockZTData> >      mapHisStockInfo;    //个股历史信息，包括交易日，换手率等
+    };
+	
+	//推送指标琅琊榜结构
+    struct FPushIndxStkLYBInfo
+    {
+        0 optional int iCurrDayRanking;//当日股池排名
+        1 optional int iPreDayRanking;//昨日股池排名
+    };
+
+    struct FPushIndxStkLYB
+    {
+        0 optional map<string,FPushIndxStkLYBInfo> mapStkLYB;//股票-琅琊榜
+    };
+
+};

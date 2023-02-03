@@ -1,0 +1,2805 @@
+#include "BasicData.jce"
+#include "Common.jce"
+#include "BaseMonitor.jce"
+
+
+module HQSys
+{
+    //服务端内部使用
+    const string CONTEXT_CONNECTION = "serialNo";
+    const string CONTEXT_PUSH_REQ = "pushRegID";
+    const string CONTEXT_REG_FLAG = "regFlag";
+    const string CONTEXT_RCV_TIME = "pushRecvTime";
+    const string CONTEXT_DIFF_PACKET = "diffPacket";
+    const string CONTEXT_RESP_STR = "responseStr";
+    const string CONTEXT_REQ_CACHE_KEY = "cacheKey";
+    const string CONTEXT_RES_PACKTYPE = "responsePackType";
+    const string CONTEXT_CONN_TYPE = "connType";
+    //20200115 用来做服务端客户端 微妙级别时间同步 
+    //收到心跳请求时间
+    const string CONTEXT_RCV_HEART_TIME = "recvHeartReqTime";
+    //回心跳包时间
+    const string CONTEXT_RSP_HEART_TIME = "rspHeartTime";
+
+
+    //funcName定义
+    enum E_PUSH_FUNC_TYPE
+    {
+        E_FUNC_HQ_PUSH = 1,
+        E_FUNC_CODES_PUSH = 2,
+        E_FUNC_MARKET_INIT = 3,
+        E_FUNC_CPT_MIN = 4,
+        E_FUNC_ALIST_PUSH = 5,
+        E_FUNC_MLIST_PUSH = 6,
+        E_FUNC_KLINE_PUSH = 7,
+        E_FUNC_ORDER_QUEUE_PUSH = 8,
+        E_FUNC_TRANSACTION_PUSH = 9,
+        E_FUNC_ORDER_REC_PUSH = 10,
+        E_FUNC_PRICE_ORDER_PUSH = 11,
+        E_FUNC_PRICE_AMOUNT_PUSH = 12,
+        E_FUNC_BROKER_QUEUE_PUSH = 13,
+        E_FUNC_REG_STATUS_PUSH = 14,
+        E_FUNC_MONEY_FLOW_PUSH = 15,
+		E_FUNC_ZH_RANK_PUSH = 16,
+        E_FUNC_FUNDFLOW_RANK_PUSH = 17,
+        E_FUNC_BLOCK_RANK_PUSH = 18,
+        E_FUNC_AOPTLIST_PUSH = 19,
+        E_FUNC_MOPTLIST_PUSH = 20,
+        E_FUNC_OPT_STOCK_PUSH = 21,
+        E_FUNC_RADAR_LIST_PUSH = 22,
+        E_FUNC_SHORT_LINE_PUSH = 23,
+		E_FUNC_VOLPRICE_PUSH = 24,
+		E_FUNC_ALLORDERPERSP_PUSH = 25,
+        E_FUNC_TICK_PUSH = 26,
+        E_FUNC_ALISTSORT_PUSH = 27,
+        E_FUNC_MONITOR_PUSH = 28,
+        E_FUNC_RTMIN_AUCTION_PUSH = 29,
+        E_FUNC_RTMIN_PUSH = 30,
+        E_FUNC_SNFUND_PUSH = 31,
+        E_FUNC_SNNETDATA_PUSH = 32,
+        E_FUNC_ORDER_BOOK = 33,
+        E_FUNC_ZDFENBU_PUSH = 34,
+    };
+    
+    //服务端内部压缩配置开关选项
+    enum E_MD_COMPRESS_TYPE
+    {
+        E_MD_NO_COMPRESS = 0,
+        E_MD_COMPRESS_LZ4 = 1,
+        E_MD_COMPRESS_LZMA = 2,
+        E_MD_COMPRESS_SNAPPY=3,
+    };
+
+	enum BASIC_HQ_RET
+    {
+        BASIC_HQ_OK = 0,
+        BASIC_HQ_NO_CHANGE = 1,                   // 数据未变更
+        BASIC_HQ_INVALID_LEN = -1,                // 请求参数不全，通常是num与详情不匹配
+        BASIC_HQ_LOGIN_FAILED = -2,               // 登陆失败
+        BASIC_HQ_NO_PERMISSION = -3,              // 没有权限，通常是L2的权限校验失败
+        BASIC_HQ_INVALID_MARKET = -4,             // 市场非法，可能是1、市场已经挂起，2、改协议不支持某些市场
+        BASIC_HQ_INVALID_PROTOCOL = -5,           // 非法的协议
+        BASIC_HQ_INVALID_TIME=-6,                 // 非法的时间
+        BASIC_HQ_SERVER_NOT_READY = -7,           // 服务器数据未就绪
+        BASIC_HQ_INCOMING_DATA_ERR = -8,          // 客户端传入字段数据错误
+		BASIC_HQ_SERVER_DATA_ERR = -9,            // 服务器数据错误
+		BASIC_HQ_SERVER_NO_DATA = -10,            // 没有数据
+		BASIC_HQ_SERVER_NO_PRE_HISDAY = -11,      // 历史日k数据没有缓存好
+        BASIC_HQ_INVALID_PARAM        = -21,      // 参数非法
+        BASIC_HQ_GET_LOCK_ERR         = -22,      // 抢锁失败
+        BASIC_HQ_GET_DATA_ERR         = -23,      // 获取数据失败
+        BASIC_HQ_UNKNOWN = -99,                   // 未知错误  
+    };
+    
+    enum E_CURRENCY_TYPE
+    {
+        E_CN_YUAN = 1,     //人民币1
+        E_HK_DOLLAR,       //港元2
+        E_US_DOLLAR,       //美元3
+        E_JP_DOLLAR,       //日元4
+        E_EN_POUND,        //英镑5
+        E_EURO_DOLLAR,     //欧元6
+        E_SWISS_FRANC,     //瑞士法郎7
+        E_CA_DOLLAR        //加元8
+    };
+    
+    enum E_TYPE_MMP
+    {
+        E_MMP_NONE = 0,     //没有买卖盘
+        E_MMP_ENABLE = 1,   //有买卖盘
+        E_MMP_SINGLE_PRICE = 2,   //仅有买卖一档价格
+        E_WEIBI_LIANGBI = 4,   //委比量比(甬兴需求)
+    };
+
+    enum E_HQ_PUSH_REG
+    {
+        E_HQ_PUSH_NONE = 0,             //不需要push
+        E_HQ_PUSH_REQUIRE = 1,          //需要push
+        E_HQ_PUSH_CANCEL  = 2,          //取消push
+    };
+
+    enum E_KLINERSP_TYPE
+    {
+        E_KLINERSP_SIMPLE = 0,        //正常数据
+        E_KLINERSP_EXT1 = 1,          //返回换手率和振幅
+    };
+    
+    //用来取市场信息
+    struct MockReqBasic
+    {
+        0 optional HeaderInfo stHeader;
+    };
+
+    //服务器推送需要关闭的reqid到proxy的数据结构
+    struct HCloseNoticeData
+    {
+        1 optional vector<long> vReqId;
+        2 optional vector<long> vUserConn;
+    };
+
+    //1802，获取个股实时资金流数据, 请求结构
+    struct HStockMFlowReq
+    {
+		0 optional HeaderInfo stHeader;
+        1 require string sCode;                //股票代码
+    };
+    //1802，获取个股实时资金流数据,回包结构
+    struct HStockMFlowRsp
+    {
+        1 optional HTolMoneyFlow sttStockMFlow;
+    };
+
+	//4223,获取深沪市场多只股票的实时资金流数据,请求结构（兼容1802协议）
+    struct HStockMFlowBatchReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require vector<HStockUnique> vStock;      //股票信息
+    };
+    //4223,获取深沪市场多只股票的实时资金流数据,回包结构
+    struct HStockMFlowBatchRsp
+    {
+        1 optional vector<HTolMoneyFlow> vStockMFlow;
+    };
+
+    //4205（兼容9510） 获取个股当日分时数据, 请求结构；9510：获取个股买卖力道数据
+    struct HRTMinDataReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require string sCode;
+        2 optional int iStartPos = 0;
+        3 optional bool bAuction = false;       //是否包含集合竞价分时数据
+        4 optional short shtVer = 0;            //0:债券分时到15:00,1:债券分时到15:30
+		5 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+    
+    //4205和9510 获取个股当日分时数据, 回包结构；获取个股买卖力道数据
+    struct HRTMinDataRsp
+    {
+        1 optional vector<HRTMinData> vRTMinData;
+        2 optional double dClose;         //昨收，分时需要确定坐标系
+		3 optional int iDate;             //最新交易日期，分时需要与五日分时做对比   
+        //用于方便PC映射应答与请求
+        4 optional string sCode;          //股票代码      
+        5 optional short shtSetcode;      //股票市场  
+        6 optional int iDateExt = 0;      //（后续废弃，改用item里面的日期）扩展日期  外盘存在跨交易日的情况，所以有两个日期，客户端拿到后跟之前日期做个排序，然后根据分钟数变小来判断跨天，用第二个日期
+    };
+
+    struct HRTMinDataSimpleReq
+    {
+        0 optional HRTMinDataReq req;
+        1 optional vector<byte>  vBitmap;             //指定返回的字段，对应E_RTMIN_BITMAP枚举
+    };
+
+    struct HRTMinDataSimpleRsp
+    {
+        1 optional vector<HRTMinDataSimple> vRTMinData;
+        2 optional double dClose;         //昨收，分时需要确定坐标系
+		3 optional int iDate;             //最新交易日期，分时需要与五日分时做对比   
+        //用于方便PC映射应答与请求
+        4 optional string sCode;          //股票代码      
+        5 optional short shtSetcode;      //股票市场  
+        6 optional int iDateExt = 0;      //（后续废弃，改用item里面的日期）扩展日期  外盘存在跨交易日的情况，所以有两个日期，客户端拿到后跟之前日期做个排序，然后根据分钟数变小来判断跨天，用第二个日期
+    };
+
+	//历史分时数据, 请求结构
+    struct HHisMinuteReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require string sCode;
+        2 require int iDate;		// 格式 YYYYMMDD
+        3 optional bool bAuction = false; //是否包含集合竞价分时数据
+		4 optional int iStartPos = 0;
+        5 optional bool bAtp = false;       //是否包含定价交易分时数据
+        6 optional short shtVer = 0;//0:不包含债券15:00~15:30的分时,1包含
+    };
+    //历史分时数据, 回包结构
+    struct HHisMinuteRsp
+    {
+        1 optional double dClose;
+        2 optional vector<HRTMinData> vMinuteData;
+		3 optional int iDate;      //数据对应交易日期 
+        4 optional int iDateExt = 0;    //扩展日期  后续废弃，改用item里面的日期
+    };
+
+    struct HHisMinuteSimpleReq
+    {
+        0 optional HHisMinuteReq req;
+        1 optional vector<byte>  vBitmap;             //指定返回的字段，对应E_RTMIN_BITMAP枚举
+    };
+
+    struct HHisMinuteSimpleRsp
+    {
+        1 optional double dClose;
+        2 optional vector<HRTMinDataSimple> vMinuteData;
+		3 optional int iDate;                        //数据对应交易日期 
+        4 optional int iDateExt = 0;                 //扩展日期  后续废弃，改用item里面的日期
+    };
+
+    //多日历史分时数据，请求
+    struct HHisMinBatchReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require string sCode;
+        2 optional int iDate;            // 格式 YYYYMMDD，历史分时回溯截止日期（不包含）
+        3 optional int iNum;             // 回溯的历史天数
+        4 optional bool bAuction = false;       //是否包含集合竞价分时数据
+		6 optional bool bContainLast = false;   //是否包含最新交易日的分时数据,如果包含则iDate必须是0或者是最新交易日期
+        7 optional short shtVer = 0;
+    };
+
+    //多日历史分时数据, 回包结构
+    struct HHisMinBatchRsp
+    {
+        1 optional map<int, double> mClose;
+        2 optional map<int, vector<HRTMinData> > mMinData;
+        3 optional map<int, int > mDateExt;     //key是日期，value是扩展日期 后续废弃，改用item里面的日期
+    };
+
+    struct HHisMinBatchSimpleReq
+    {
+        0 optional HHisMinBatchReq req;
+        1 optional vector<byte>  vBitmap;             //指定返回的字段，对应E_RTMIN_BITMAP枚举
+    };
+
+    struct HHisMinBatchSimpleRsp
+    {
+        1 optional map<int, double> mClose;
+        2 optional map<int, vector<HRTMinDataSimple>> mMinData;
+        3 optional map<int, int > mDateExt;           //key是日期，value是扩展日期 后续废弃，改用item里面的日期
+    };
+
+
+    //4206，获取个股的K线数据, 请求结构  （PS. 唯一全面支持复权的接口，前后复权都是实时计算得来的，效率慢）
+    struct HKLineDataReq
+    {
+		0 optional HeaderInfo stHeader;
+        1 require string sCode;
+        2 require HISTORY_DATA_TYPE eLineType;       // 请求k线数据类型
+        3 optional short shtStartxh = 0;             // 起始位置
+        4 optional short shtWantNum = 100;           // 请求个数
+        5 optional bool bXRXDFlag = false;           // 复权标识，false：不复权；true：前复权
+		6 optional bool bSameUnit =false;            // 是否要统一返回的成交量单位
+		7 optional E_QX_MODE eQxMode = EQM_QX_NONE;  // bXRXDFlag为false时，此字段才有效
+		8 optional long lDate = 0;                   // 日期YYYYMMDDHHmm
+        9 optional E_KLINERSP_TYPE shtTypeRsp = E_KLINERSP_SIMPLE; // shtTypeRsp为1时，K线返回振幅和换手率
+    };
+    //4206，获取个股的K线数据, 回包结构
+    struct HKLineDataRsp
+    {
+        1 optional vector<HAnalyData> vAnalyData;   //根据请求进行除权除息计算
+    };
+
+    struct HKLineDataSimpleReq
+    {
+        0 optional HKLineDataReq  req;                //公共请求入参
+        1 optional vector<byte>  vBitmap;             //指定返回的字段，对应枚举E_KLINE_BITMAP
+    };
+
+    struct HKLineDataSimpleRsp
+    {
+        1 optional vector<HCQAnalyDataSimple> vData;   //根据请求进行除权除息计算
+    };
+
+
+    //注册个股的K线数据, 请求结构，pc端使用  （PS.这个接口并不支持复权，只是带了部分复权信息而已）
+    struct HRegKLineReq
+    {
+		0 optional HeaderInfo stHeader;
+        1 require string sCode;
+        2 require HISTORY_DATA_TYPE eLineType;       //请求k线数据类型
+        3 optional long lDate;                       //日期YYYYMMDDHHmm
+        4 optional int iWantNum = 100;              //可为正负值，正值往起始日后取数据，负往起始日前取数据，不包含当日数据
+        6 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        7 optional bool bXRXDFlag = false;            //复权标识,为true时会返回高开低收日期，价格为复权前价格
+    };
+
+    struct HRegKLineSimpleReq
+    {
+		0 optional HRegKLineReq  req;                 //公共请求入参
+        1 optional vector<byte>  vBitmap;             //指定返回的字段 
+    };
+
+    //注册个股的K线数据, 回包结构
+    struct HRegKLineRsp
+    {
+        1 optional vector<HCQAnalyData> vAnalyData;   //根据请求进行除权除息计算
+    };
+
+    struct HRegKLineSimpleRsp
+    {
+        1 optional vector<HCQAnalyDataSimple> vData;   //根据请求进行除权除息计算
+    };
+
+	//新增k线接口，获取多只股票从起始时间到结束时间的除权除息K线数据, 请求结构  （PS.20200117 只支持日k级别的复权，其他周期返回的都是不复权的数据）
+    struct HKLineDataByPeriodReq
+    {
+		0 optional HeaderInfo stHeader;
+        1 require vector<HStockDatePeriod> vStockDatePeriod;      //股票信息
+        2 require HISTORY_DATA_TYPE eLineType;       //请求k线数据类型,暂时只支持历史日k数据 HDT_DAY_KLINE
+        3 optional bool bXRXDFlag =  false;          //复权标识
+    };
+    //新增k线接口，获取多只股票从起始时间到结束时间的除权除息K线数据, 回包结构
+    struct HKLineDataByPeriodRsp
+    {
+        1 optional vector<HStockAnalyData> vStockAnalyData;   //根据请求进行除权除息计算
+    };
+
+    struct HKLineDataByPeriodSimpleReq
+    {
+		0 optional HKLineDataByPeriodReq  req;        //公共请求入参
+        1 optional vector<byte>  vBitmap;             //指定返回的字段，对应枚举E_KLINE_BITMAP
+    };
+
+    struct HKLineDataByPeriodSimpleRsp
+    {
+        1 optional vector<HStockAnalySimpleData> vData;   //根据请求进行除权除息计算
+    };
+
+    //获取不复权K线
+    struct HStockKLineReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sCode;                        //股票代码
+        2 optional HISTORY_DATA_TYPE eLineType;         //请求k线数据类型
+        3 optional long lDate;                          //日期YYYYMMDDHHmm
+        4 optional int iWantNum = 100;                  //可为正负值，正值往起始日后取数据，负往起始日前取数据，不包含当日数据
+        5 optional vector<HCheckData> vecCheck;         //日期时间对应校验码(废弃)
+        6 optional HSectionCheckData stSecCheck;        //校验码日期时间范围
+    };
+    struct HStockKLineRsp
+    {
+        //0 optional HISTORY_DATA_TYPE eLineType;         //原样返回
+        1 optional vector<HCQAnalyData> vAnalyData;     //不复权K线包
+        2 optional vector<HCheckData> vecCheck;         //K线对应校验码
+        3 optional HSectionCheckData stSecCheck;        //校验码日期时间范围
+    };
+
+    //4207,获取个股的tick数据，请求结构
+    struct HTickDataReq
+    {
+		0 optional HeaderInfo stHeader;
+        1 require string sCode;
+        2 optional short shtStartxh = 0;  // 从新往旧的方向
+        3 optional short shtWantNum = 100;
+        4 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+    //4207,获取个股的tick数据，回包结构
+    struct HTickDataRsp
+    {
+        1 optional byte cPrecise;               // 小数精度
+        2 optional vector<HTickData> vTickData; // 对期货市场需要进行性质分类计算
+        3 optional int iCount;                  // 总数
+    };
+
+    //获取个股的历史tick数据，请求结构
+    struct HHisTickReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require string sCode;
+        2 require int iDate;
+        3 optional short shtStartxh = 0;
+        4 optional short shtWantNum = 100;
+    };
+    //获取个股的历史tick数据，回包结构
+    struct HHisTickRsp
+    {
+        1 optional byte cPrecise;               //小数精度
+        2 optional vector<HTickData> vTickData; //对期货市场需要进行性质分类计算        
+    };
+
+    //4224,获取深沪市场个股历史日资金流数据，请求结构
+    struct HMFlowByDayReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require string sCode;
+        2 optional short shtStartxh = 0;
+        3 optional short shtWantNum = 100;
+    };
+    //4224,获取深沪市场个股历史日资金流数据，回包结构
+    struct HMFlowByDayRsp
+    {
+        1 optional vector<HTolMoneyFlow> vStockMFlow;
+    };
+
+    //4224,获取深沪市场个股历史日资金流数据，请求结构
+    struct HMFByTradeReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require string sCode;
+        2 optional short shtStartxh = 0;
+        3 optional short shtWantNum = 10;
+        4 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+    //4224,获取深沪市场个股历史日资金流数据，回包结构
+    struct HMFByTradeRsp
+    {
+        1 optional vector<HTolMoneyFlow> vStockMFlow;   //股票在市场交易日对应的资金数据
+        2 optional vector<long> vDate;                  //市场交易日
+    };
+
+    struct HStockMFlowDataReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sCode;                        //股票代码
+        2 optional HISTORY_DATA_TYPE eLineType;         //请求资金流数据类型
+        3 optional long lDate;                          //日期YYYYMMDDHHmm
+        4 optional int iWantNum = 100;                  //可为正负值，正值往起始日后取数据，负往起始日前取数据，包含基准点数据
+        5 optional vector<HCheckData> vecCheck;          //日期时间对应校验码
+        6 optional E_MONEYFLOW_TYPE eMfType = E_MONEYFLOW_DOUBLE;    //资金流类型，默认双向资金流
+    };
+
+    struct HStockMFlowDataRsp
+    {
+        //0 optional HISTORY_DATA_TYPE eLineType;       //原样返回
+        1 optional vector<HDDZData> vMFlowData;         //资金流
+        2 optional vector<HCheckData> vecCheck;          //按天校验码
+    };
+
+    struct HStockBatchMFlowDataReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sCode;                        //股票代码
+        2 optional HISTORY_DATA_TYPE eLineType;         //请求资金流数据类型
+        3 optional long lDate;                          //日期YYYYMMDDHHmm
+        4 optional int iWantNum = 100;                  //可为正负值，正值往起始日后取数据，负往起始日前取数据，包含基准点数据
+        5 optional map<E_MONEYFLOW_TYPE,vector<HCheckData> > mapCheckData;          //类型及对应检验码数据
+    };
+
+    struct HStockBatchMFlowDataRsp
+    {
+        0 optional map<E_MONEYFLOW_TYPE,HStockMFlowDataRsp > mapData;          //类型及对应资金流回包数据
+    };
+
+    //4225，获取深沪市场的资金流排名数据,请求结构
+    struct HMFlowRankReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require E_BUSS_TYPE eBussType; //一个业务类型可能对于多个内部类型
+        2 optional short shtStartxh=0;
+        3 optional short shtWantNum=100;
+        4 optional vector<HStockUnique> vStock;//填code，表示查个股资金；不填表示查资金排行
+        5 optional E_MF_RANK_SORT_COLUMN  eColumn;
+        6 optional E_SORT_METHOD eSort;
+    };
+    //4225，获取深沪市场的资金流排名数据,回包结构
+    struct HMFlowRankRsp
+    {
+        1 optional vector<HMFlowRank> vMFlowRank;
+        2 optional unsigned int iTotalSize = 0;
+    };
+
+    //4226，获取深沪市场的DDE排名数据,请求结构
+    struct HDDERankReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require short shtDomain;   // E_BUSS_TYPE
+        2 optional short shtStartxh=0;
+        3 optional short shtWantNum=100;
+        4 optional E_DDERANK_SORT_COLUMN  eColumn;
+        5 optional E_SORT_METHOD eSort;
+    };
+    //4226，获取深沪市场的DDE排名数据,回包结构
+    struct HDDERankRsp
+    {
+        1 optional vector<HDDERank> vDDERank;
+        2 optional unsigned int iTotalSize = 0;
+    };
+
+    //4401,获取多只股票的DDE数据，请求结构
+    struct HStockDDEBatchReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require vector<HStockUnique> vStock;      //股票信息
+    };
+    //4401,获取多只股票的DDE数据，回包结构
+    struct HStockDDEBatchRsp
+    {
+        1 optional vector<HDDERank> vStockDDE;
+    };
+
+    //短线精灵请求
+    struct HDxjlReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional vector<HStockUnique> vStock;                             //股票信息为空时，查询列表
+    	2 optional unsigned int iNum;                                       //0：取所有数据；其它值,对应数据
+    	3 optional bool blnFromHead = true;                                 //是否从头开始取
+		4 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        
+        //下面是增量偏移模式 默认false用之前的协议，否则用下面的字段，上面的iNum，blnFromHead字段废弃不用，注意数据都是按时间正序返回
+    	5 optional bool IncreaseMode = false;                               //是否开启增量偏移模式
+        6 optional unsigned int uiStartPosEx = -1;                          //基准点 0即从头开始，-1（最大值），从最后开始，PS.返回结果包含基准点！
+        7 optional int iNumEx = -200;                                       //取多少个数据 支持正负（往前往后追溯）
+	    8 optional vector<short> vMarket;                                   //市场(IncreaseMode=true才有效)，为空时取全市场。不支持按照市场推送，目前依然是全量推送。
+        9 optional vector<short> vType;                                     //类型(IncreaseMode=true才有效)，为空时取所有类型。不支持按照类型推送，目前依然是全量推送。
+    };
+    //短线精灵回包
+    struct HDxjlRsp
+    {
+        1 optional vector<HDxjl> vDxjl;
+        2 optional unsigned int uiStartPosEx = 0;//第一条数据的起始位置 增量偏移模式下才会赋值
+    };
+    
+    //LV2监控，列表
+    struct HL2MonitReq
+    {
+    	0 optional HeaderInfo stHeader;
+    	1 optional vector<HStockUnique> vStock; //股票信息为空时，查询列表
+    	2 optional short shtStartxh=0;//开始的位置
+        3 optional short shtWantNum=100;//取的个数
+        4 optional E_STOCK_ORDER_TYPE  eColumn;//短线精灵排序的列
+        5 optional E_SORT_METHOD eSort;//升降序
+    };
+    
+    //LV2监控，回包
+    struct HL2MonitRsp
+    {
+    	0 optional vector<HL2Monit> vMonit;
+    };
+    
+    //LV2识庄，拖拉机单，顶级挂单，主力撤买
+	struct HLV2SZFYReq
+	{
+		0 optional HeaderInfo stHeader;
+		1 optional vector<HStockUnique> vStock; //股票信息为空时，查询列表,支持排序
+		2 optional short shtStartxh=0;//开始的位置
+        3 optional short shtWantNum=100;//取的个数
+        4 optional E_STOCK_ORDER_TYPE  eColumn;//选择类型，拖拉机买，卖；顶级挂单；主力撤买卖
+        5 optional E_SZFY_ORDER_TYPE  eOrder;//排序的列，次数，总量，总额
+        6 optional E_SORT_METHOD eSort;//升降序
+        7 optional bool blnDetail = false; //是否需要明细
+	};
+	
+	//LV2识庄，回包
+	struct HLV2SZFYRsp
+	{
+		0 optional vector<HSZFY> vMonit;
+	};
+
+	//合并LV2识庄，拖拉机单（买卖），顶级挂单（买卖），主力撤买（卖）
+	struct HSZFYComReq
+	{
+		0 optional HeaderInfo stHeader;
+        1 optional E_COM_ORDER_TYPE  eType;         //选择合并类型:拖拉机买(卖);顶级挂单(买卖);主力撤买(卖）
+        2 optional short shtStartxh = 0;            //开始的位置
+        3 optional short shtWantNum = 100;          //取的个数
+        4 optional E_SZFYCOM_ORDER_TYPE  eOrder;    //排序的列
+        5 optional E_SORT_METHOD eSort;             //升降序
+	};
+	
+	//LV2识庄，回包
+	struct HSZFYComRsp
+	{
+		0 optional vector<HSZFYCom> vMonit;
+        1 optional unsigned int iTotalSize = 0;
+	};
+	
+    //4202(兼容4212--适配器过滤），获取股票的行情信息,请求结构
+    struct HStockHqReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require vector<HStockUnique> vStock;                      //股票信息
+        2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        3 optional E_STOCK_HQ_DATA eHqData = E_SHD_NONE;            //本次返回哪些行情数据,默认不返回行情
+        4 optional E_STOCK_DATA_ENV eEnvData = E_SHDE_NORMAL;       //默认根据E_STOCK_HQ_DATA确定行情数据
+        6 optional int iDelayFlag = 0;                              //废弃。延时标识，0：实时；1：港股延时
+        7 optional vector<byte>  vBitmap;                           //指定返回的字段 
+        8 optional short shtDiffType = 0;                           //包间差量，0：默认不开启包间差量；1：开启沪深市场包间差量;
+    };
+
+    struct HStockHqSimpleReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require vector<HStockUnique> vStock;                      //股票信息
+        2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        3 optional vector<byte>  vBitmap;                           //指定返回的字段 
+    };
+
+    //4202，获取股票的行情信息，回包结构
+    struct HStockHqRsp
+    {
+        1 optional vector<HStockHq> vStockHq;
+    };
+
+    struct HStockHqSimpleRsp
+    {
+        1 optional vector<HStockHqSimple> vStockHq;
+    };
+
+	// 自选股扩展请求
+    struct OptStockHqExReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require vector<HStockUnique> vStock;      //股票信息
+        2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        3 optional int iDelayFlag = 0;  // 废弃。延时标识，0：实时；1：港股延时
+
+        4 optional bool bRtMin = false;     //是否返回分时数据
+        5 optional int iStartPos = 0;
+        6 optional bool bAuction = false;       //是否包含集合竞价分时数据
+        7 optional short shtType = 0;         //0:都返回,1:只返回现价,2:只返回均价,3:都不返回
+    };
+
+	struct OptStockHqExRsp
+    {
+        0 optional vector<OptStockHqEx> vOptStockHqEx;
+    };
+	
+	struct HOptStockHqReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require vector<HStockUnique> vStock;      //股票信息
+        2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+
+    struct HOptStockHqRsp
+    {
+        1 optional vector<HStockHq> vStockHq;
+    };
+
+	//4202，获取股票信息,请求结构
+	struct HStockBaseInfoReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require vector<HStockUnique> vStock;  //股票信息
+        2 optional bool bNeedDelist = false; // 是否需返回退市股的信息
+    };
+
+
+	//4202，获取股票信息,回包结构
+	struct HStockBaseInfoRsp
+    {
+        1 optional vector<HStockBaseInfo> vStockInfo;
+    };
+
+    struct HStockBaseInfoSimpleReq
+    {
+        0 optional HStockBaseInfoReq req;
+        1 optional vector<byte> vBitmap;             //指定返回的字段
+    };
+
+	struct HStockBaseInfoSimpleRsp
+    {
+        1 optional vector<HStockBaseInfoSimple> vStockInfo;
+    };
+
+    // 静态数据
+    struct HStockStaticInfoRsp
+    {
+        1 optional vector<StockStaticData> vStockInfo;
+    };
+
+    struct HMarketBaseInfoReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional vector<HMarketCheckSum> vMarket;
+    };
+
+    struct HMarketBaseInfoRsp
+    {
+        0 optional vector<HMarketBaseBuf> vMarketBuf;
+    };
+
+    struct HOptionBaseInfoReq
+    {
+        0 optional HeaderInfo stHeader;
+    };
+
+    struct HOptionBaseInfoRsp
+    {
+        0 optional vector<HOptionBaseInfo> vBaseInfo;
+    };
+
+	// 获取市场码表，请求结构
+	struct HStockDictReq
+	{
+		0 optional HeaderInfo stHeader;
+		2 require vector<short> vSetcode;
+	};
+	
+	// 获取市场码表，回包结构
+	struct HStockDictRsp
+	{
+		1 optional vector<HStockDictInfo> vStockInfo;
+	};
+
+	struct HStockDictSimpleReq
+	{
+		0 optional HStockDictReq req;
+		1 optional vector<byte> vBitmap;             //指定返回的字段，对应E_DICT_BITMAP枚举
+	};
+	
+	struct HStockDictSimpleRsp
+	{
+		1 optional vector<HStockDictInfoSimple> vStockInfo;
+	};
+
+	struct HStockBaseBatchReq
+    {
+        0 optional HeaderInfo stHeader;
+    };
+	struct HStockBaseBatchRsp
+    {
+        1 optional vector<HStockBaseInfo> vStockInfo;
+    };
+
+    //4409，获取所有的AH股行情数据，请求结构
+    struct HStockAHListReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional short shtStartxh=0;
+        2 optional short shtWantNum=100;
+        3 optional E_AH_SORT_COLUMN  eColumn;
+        4 optional E_SORT_METHOD eSort;
+        5 optional E_AM_STK_TYPE eAMType = E_AM_STK_AH; //默认取AH股列表
+        6 optional byte cPremiumType = 0; // AH溢价类型，取值为E_AH_PREMIUM_TYPE
+    };
+    //4409，获取所有的AH股行情数据,回包结构
+    struct HStockAHListRsp
+    {
+        1 optional vector<HAHStock> vAHStock;
+    };
+
+	//获取股票对应的AH股行情数据，请求结构
+    struct HStockAHReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require string sCode;
+        2 optional E_AM_STK_TYPE eAMType = E_AM_STK_AH; //默认取AH股列表
+        3 optional byte cPremiumType = 0; // AH溢价类型，取值为E_AH_PREMIUM_TYPE
+    };
+
+    //获取股票对应的AH股行情数据,回包结构
+    struct HStockAHRsp
+    {
+		1 optional double fPremiumRate;   //溢价率
+		2 optional HAHItem stItem;        //股票对应的AH股行情
+        3 optional unsigned short shtPrecise; //精度
+        4 optional double fConversionPrice;    // ADR换算价
+        5 optional double fConversionChgValue; // ADR换算涨跌值
+        6 optional double fConversionChgRatio; // ADR换算涨跌幅
+    };
+
+    //获取股票对应的AH股行情数据，回包结构
+    struct HStockAHBatchRsp
+    {
+        1 optional vector<HStockAHRsp> vAHStock;
+    };
+
+    //4412，获取全市场交易时期数据，请求结构
+    struct HTradePeriodReq
+    {
+        0 optional HeaderInfo stHeader;        
+    };
+    //4412，获取全市场交易时期数据，回包结构
+    struct HTradePeriodRsp
+    {
+        1 optional map<short, HTradePeriod> vMTradeInfo;    //码表数据
+    };
+    
+    //获取沪深市场的除权信息
+    struct HCQCXReq
+    {
+    	0 optional HeaderInfo stHeader;
+    	1 optional int iDate;		//除权除息变动日期
+    	2 optional int iType; 		//类型
+    };
+
+    struct HCQCXRsp
+    {
+    	1 optional vector<HCQCX> vInfo;
+    };
+
+	//4201，获取热点板块行情数据, 请求结构
+    struct HHotPlateReq
+    {
+		0 optional HeaderInfo stHeader;
+        1 require string sCode;                //股票代码
+    };
+    //4201，获取热点板块行情数据,回包结构
+    struct HHotPlateRsp
+    {
+        1 optional vector<HHotPlateStock> vHotPlateData;
+    };
+
+    //注册最近交易时间，请求结构
+    struct HRegCPTMinReq
+    {
+    		0 optional HeaderInfo stHeader;
+        1 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+    
+    //注册最近交易时间，回包结构
+    struct HRegCPTMinRsp
+    {
+    		1 optional short shtSetcode;
+    		2 optional HCPTMin cptData; 
+    };
+ 
+    //注册市场初始化，请求结构   
+    struct HRegMarketInitReq
+    {
+    	0 optional HeaderInfo stHeader;
+        1 optional vector<short> vSetCode;
+        2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+    
+    //注册市场初始化，回包结构   
+    struct HRegMarketInitRsp
+    {
+        1 optional vector<HMarketInit> vInfo;
+    };    
+    
+    //注册码表请求
+    struct HRegCodesReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sCheckSum;
+        2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        3 optional bool bUTF8 = false;//股票名称是否需要转成utf8格式
+    };
+
+    struct HRegCodesRsp
+    {
+        1 optional HMarketCodes stInfo;
+    };
+    
+    //获取市场当前完整的交易时间段，对于跨天拆分
+    struct HPeriodReq
+    {
+    	0 optional HeaderInfo stHeader;
+    	1 optional vector<short> vMarket;
+        2 optional short shtVer = 0;//0:债券收盘时间到15:00,1收盘时间15:30
+    };
+    
+    //回包
+    struct HPeriodRsp
+    {
+    	1 optional map<short, HTradePeriodTime> vTime;
+        2 optional long lCurTime;       //主机当前时间戳
+    };	
+    
+    enum E_LOGIN_STATUS
+    {
+        E_LOGIN_STAT_OK = 0,               // 成功
+        E_LOGIN_STAT_FAILED = 1,           // 失败
+        E_LOGIN_STAT_OVERDUE = 2,          // 账户过期
+        E_LOGIN_STAT_DUP = 3,              // 账户重复登录
+        E_LOGIN_STAT_NO_RIGHT = 4,         // 没有权限
+        E_LOGIN_STAT_TOKEN_INVALID = 5,    // token非法
+        E_LOGIN_STAT_TOKEN_ERROR = 6,      // token非法
+        E_LOGIN_STAT_USERID_INVALID = 7,   // userId非法
+        E_LOGIN_STAT_USERID_NO_MATCH = 8,  // userId和token中的信息不匹配
+        E_LOGIN_STAT_PLAT_NO_MATCH = 9,    // 平台不匹配，例如：请求的eAuthType为E_LOGIN_AUTH_XW权限，但是xua是APP，不是PC。
+        E_LOGIN_STAT_OEM_TOKEN_INVALID=10, // 三方校验失败
+    };
+
+	enum E_CLT_INFO_STATUS
+    {
+        E_CLT_INFO_OK = 0,            // 成功
+		E_CLT_INFO_ERR = 1,           // SDK版本号错误
+    };
+
+    struct HUserLoginReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional short shtEncryptType;    //加密标志，0不加密，1加密
+        2 optional string sCltTime;         //客户端登录时间，yyyy-mm-dd hh::mm::ss
+        3 optional vector<byte> vUserId;    //用户id
+        4 optional vector<byte> vToken;     //客户端从登录服务器拿到的token
+		5 optional E_LOGIN_AUTH_TYPE eAuthType = E_LOGIN_AUTH_SZ_SH; //登录认证类型，默认是深沪L2用户登录认证
+        6 optional string sOEMToken;        //用于三方校验的字符串
+        7 optional bool bKickoutDiffClt = true;//不同设备登录是否互踢，默认互踢，即不同设备不能同时登录
+    };
+
+    struct HUserLoginRsp
+    {
+        1 optional E_LOGIN_STATUS eStatus;
+        2 optional string sMsg;     //错误信息
+    };
+
+    //国元互踢需求:新增L1简单登陆接口,无权限验证,只支持互踢(一个L1还不准重复登陆,这券商不行)
+    struct HUserSimpleLoginReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sCltTime;         //客户端登录时间，yyyy-mm-dd hh::mm::ss
+        2 optional string strUserId;    //用户id
+    };
+
+    struct HUserSimpleLoginRsp
+    {
+        1 optional E_LOGIN_STATUS eStatus;
+        2 optional string sMsg;     //错误信息
+    };
+
+
+    struct HProxyLoginReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional HUserLoginReq stLogin;
+        2 optional bool bClearFlag = false; //用于标识是否清理
+        3 optional long lCltConId;          //用于proxy传客户端的连接号
+    };
+        
+    struct HProxyLoginRsp
+    {
+        0 optional HLoginInfo stInfo;       //用户的login信息
+        1 optional E_LOGIN_STATUS eStatus;  //登录状态
+        2 optional string sMsg;             //错误信息
+    };
+
+	struct HUserPermissionReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sToken;     //请求token
+    };
+
+    struct HUserPermissionRsp
+    {
+        1 optional E_LOGIN_STATUS eStatus;
+    };
+
+    //注册委托队列请求
+    struct HOrderQueueReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sCode;
+        2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+
+    struct HOrderQueueRsp
+    {
+        0 optional vector<HOrderQueue> vOrderData;
+    };
+    
+    enum E_TRANS_DATA_TYPE
+    {
+        E_TRANS_DATA_NORMAL = 0,
+        E_TRANS_DATA_BIG = 1,       //大单
+    };
+
+    //逐笔交易请求
+    struct HTransDataReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sCode;
+        2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;    //注册flag
+        3 optional int iStatPos;    //起始位置，-1时反向取最新的，>=0时正向取
+        4 optional int iWantNum;
+        5 optional E_TRANS_DATA_TYPE eTransType = E_TRANS_DATA_NORMAL;  //是否是大单交易
+        6 optional int iReversePos = 0; //反向位置>=0，默认值0根据iStartPos取位置；>0时表示从正向index位置反向取（数目由iWantNum决定）
+    };
+
+    struct HTransDataRsp
+    {
+        0 optional vector<HTransaction> vTrans;
+        1 optional int iIndex;          //最后一条数据在全部数据中的正向索引号
+    };
+
+    enum E_ORDER_REC_TYPE
+    {
+        E_ORDER_REC_NORMAL = 0,
+        E_ORDER_REC_BIG = 1,       //大单
+        E_ORDER_REC_CANCEL = 2,    //撤单
+        E_ORDER_REC_CANCEL_BIG = 3,//大单撤单
+    };
+
+    //委托单信息请求
+    struct HOrderRecReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sCode;
+        2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;    //注册flag
+        3 optional int iStatPos;    //起始位置，-1时反向取最新的，>=0时正向取
+        4 optional int iWantNum;
+        5 optional E_ORDER_REC_TYPE eRecType = E_ORDER_REC_NORMAL;   //委托单类型
+        6 optional int iReversePos = 0; //反向位置>=0，默认值0根据iStartPos取位置；>0时表示从正向index位置反向取（数目由iWantNum决定）
+    };
+
+    struct HOrderRecRsp
+    {
+        0 optional vector<HOrderRec> vRec;
+        1 optional int iIndex;          //最后一条数据在全部数据中的正向索引号
+    };
+
+    //价格委托请求
+    struct HPriceOrderReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sCode;
+        2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+    
+    struct HPriceOrderRsp
+    {
+        0 optional HOrderSumStat stSum;                 //委托单汇总数据
+        1 optional vector<HOrderQueuePrice> vBuyOrder;  //委托队列买入价位信息
+        2 optional vector<HOrderQueuePrice> vSellOrder; //委托队列卖出价位信息
+    };
+
+    //价格委托变化请求
+    struct HPriceAmountReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sCode;
+        2 optional float fPrice;
+        3 optional E_ORDER_OPERATE_TYPE eType;                  //委托单，买入、卖出
+        4 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+
+    struct HPriceAmountRsp
+    {
+        0 optional E_ORDER_OPERATE_TYPE eType;                  //委托单，买入、卖出
+        1 optional float fPrice;
+        2 optional vector<HPriceAmount> vOrder;
+    };
+
+    //获取港股经纪人信息,请求结构
+    struct HBrokerQueueReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require HStockUnique stock;      //股票信息
+        2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+    //获取港股经纪人信息，回包结构
+    struct HBrokerQueueRsp
+    {
+        0 optional HBrokerQueue brokerQueue;
+    };
+
+    ///////////////////////////////分类行情：begin////////////////////////////    
+    
+	//根据类型查询板块
+	struct HType2StockReq
+	{
+		//header里面的市场参数必须有填写
+		0 optional HeaderInfo stHeader;
+		1 optional vector<E_STOCK_CATEGORY> vCategory;
+		2 optional E_HQ_SORT_COLUMN eColumn;                  //排序列
+		3 optional E_SORT_METHOD eSort = E_SORT_DEFAULT;      //排序方法
+		4 optional E_STOCK_HQ_DATA eHqData = E_SHD_NONE;      //本次返回哪些行情数据,默认不返回
+		5 optional int iWantNum = -1;                         //请求个数,默认-1为全部返回.
+        6 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        7 optional E_STOCK_DATA_ENV eEnvData = E_SHDE_NORMAL;  //默认根据E_STOCK_HQ_DATA确定行情数据
+        8 optional bool bDelayHq = false;                               //是否获取延时行情（主要是港股）
+        9 optional int iStartPos = 0; // 起始编号
+        10 optional vector<byte>  vBitmap;    // 指定返回的字段
+        //市场+类型，如果这个有值 忽略vCategory 不支持内外盘混合,stHeader中的市场区分内盘还是外盘，如果是stHeader内盘，自动忽略vMarketType里的外盘市场
+        //如果有一个数据的shtType小于0 则表示忽略type模式，返回该市场下所有类型的股票
+        11 optional vector<HMarketTypeData>vMarketType;   
+        12 optional E_TYPE_MMP eTypeMmp = E_MMP_NONE;           //买卖盘口开关
+        13 optional vector<E_RANK_FILTER_TYPE> vFilterType;     //过滤类型，不支持外盘，ST、新股、次新股、科创板、创业板
+	};
+
+    //根据类型查询板块，精简
+	struct HTypeListSimpleReq
+	{
+		0 optional HeaderInfo stHeader;
+		1 optional vector<E_STOCK_CATEGORY> vCategory;
+		2 optional E_HQ_SORT_COLUMN eColumn;                            //排序列
+		3 optional E_SORT_METHOD eSort = E_SORT_DEFAULT;                //排序方法
+        4 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        5 optional int iStartPos = 0;                                   //起始编号
+        6 optional int iWantNum = -1;                                   //请求个数,默认-1为全部返回.
+        7 optional vector<byte>  vBitmap;                               //指定返回的字段
+        //市场+类型，如果这个有值 忽略vCategory 不支持内外盘混合,stHeader中的市场区分内盘还是外盘，如果是stHeader内盘，自动忽略vMarketType里的外盘市场
+        //如果有一个数据的shtType小于0 则表示忽略type模式，返回该市场下所有类型的股票
+        8 optional vector<HMarketTypeData>vMarketType;   
+	};
+
+    //按照主类型和子类型订阅
+    struct HSubTypeSubmit
+    {
+        0 optional short shtMarket;
+        1 optional int iType = 0;
+        2 optional int iSubType = 0;
+    };
+
+    //根据业务类型查询板块
+	struct HType2StockSimpleReq
+	{
+		0 optional HeaderInfo stHeader;
+		1 require E_BUSS_TYPE eBussType;                        //一个业务类型可能对于多个内部类型
+		2 optional E_HQ_SORT_COLUMN eColumn;
+		3 optional E_SORT_METHOD eSort = E_SORT_DEFAULT;
+        4 optional E_STOCK_HQ_DATA eHqData = E_SHD_NONE;        //本次返回哪些行情数据，默认不返回
+		5 optional int iWantNum = -1;                           //请求个数,默认-1为全部返回.
+        6 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        7 optional E_STOCK_DATA_ENV eEnvData = E_SHDE_NORMAL;   //默认根据E_STOCK_HQ_DATA确定行情数据
+        8 optional bool bDelayHq = false;                       //是否获取延时行情（主要是港股）
+        9 optional int iStartPos = 0;                           //起始编号
+        10 optional vector<byte>  vBitmap;                      //指定返回的字段
+        11 optional vector<HTypeSubType> vType;                 //按类型,子类型过滤(E_BUSS_TYPE为EBT_T_SUB，EBT_T_A_SUB和EBT_T_M_SUB时vSubType才有意义)
+        12 optional E_TYPE_MMP eTypeMmp = E_MMP_NONE;           //买卖盘口开关
+        13 optional vector<E_RANK_FILTER_TYPE> vFilterType;     //过滤类型，不支持外盘，ST、新股、次新股、科创板、创业板
+    };
+
+    //根据业务类型查询，精简版
+	struct HBusListSimpleReq
+	{
+		0 optional HeaderInfo stHeader;
+		1 require E_BUSS_TYPE eBussType;                        //一个业务类型可能对于多个内部类型
+		2 optional E_HQ_SORT_COLUMN eColumn;
+		3 optional E_SORT_METHOD eSort = E_SORT_DEFAULT;
+        4 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        5 optional int iStartPos = 0;                           //起始编号
+        6 optional int iWantNum = -1;                           //请求个数,默认-1为全部返回.
+        7 optional vector<HTypeSubType> vType;                  //按类型,子类型过滤(E_BUSS_TYPE为EBT_T_SUB，EBT_T_A_SUB和EBT_T_M_SUB时vSubType才有意义)
+        8 optional vector<byte> vBitmap;                        //指定返回的字段
+    };
+
+	struct HType2StockRsp
+	{
+		1 optional vector<HStockHq> vStock;
+		2 optional int iTotalNum; // 总个数
+	};
+
+    //精简版
+    struct HType2StockSimpleRsp
+	{
+		1 optional vector<HStockHqSimple> vStock;
+		2 optional int iTotalNum; // 总个数
+	};
+
+    //根据板块查询股票
+	struct HBlock2StockReq
+	{
+		0 optional HeaderInfo stHeader;
+		//注意：blockCode可能是6位，可能是10位
+		1 require vector<string> vBlockCode;
+		2 optional E_HQ_SORT_COLUMN eColumn;
+		3 optional E_SORT_METHOD eSort = E_SORT_DEFAULT;
+        4 optional E_STOCK_HQ_DATA eHqData = E_SHD_NONE;      //本次返回哪些行情数据，默认不返回
+        5 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        6 optional E_STOCK_DATA_ENV eEnvData = E_SHDE_NORMAL;  //默认根据E_STOCK_HQ_DATA确定行情数据
+        7 optional int iWantNum = -1;                         //请求个数,默认-1为全部返回.
+        8 optional bool bDelayHq = false;                               //是否获取延时行情（主要是港股）
+        9 optional int iStartPos = 0;                         // 起始编号.
+        10 optional vector<byte>  vBitmap;    // 指定返回的字段
+        11 optional E_TYPE_MMP eTypeMmp = E_MMP_NONE;           //买卖盘口开关
+        12 optional vector<E_RANK_FILTER_TYPE> vFilterType;     //过滤类型，不支持外盘，ST、新股、次新股、科创板、创业板
+	};
+
+    //根据板块查询股票，精简版
+	struct HBlock2StockSimpleReq
+	{
+		0 optional HeaderInfo stHeader;
+		1 require vector<string> vBlockCode;
+		2 optional E_HQ_SORT_COLUMN eColumn;
+		3 optional E_SORT_METHOD eSort = E_SORT_DEFAULT;
+        4 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        5 optional int iStartPos = 0;                         //起始编号.
+        6 optional int iWantNum = -1;                         //请求个数,默认-1为全部返回.
+        7 optional vector<byte>  vBitmap;                     //指定返回的字段
+	};
+
+	struct HBlock2StockRsp
+	{
+		//key是板块代码，value是股票列表
+		1 optional map<string, HType2StockRsp> mStockList;
+	};
+
+    //特色板块
+	struct HTsBlockLevelReq
+	{
+		0 optional HeaderInfo stHeader;
+		1 optional vector<string> vBlockCode;
+	};
+
+	struct HTsBlockLevelRsp
+	{
+		1 optional map<string, map<string, vector<string>>> mTsLevel;
+    };
+    
+    struct HBlock2StockSimpleRsp
+	{
+		//key是板块代码，value是股票列表
+		1 optional map<string, HType2StockSimpleRsp> mStockList;
+	};
+
+    //根据股票查询板块
+	struct HStock2BlockReq
+	{
+		0 optional HeaderInfo stHeader;		
+		1 require string sStockCode;
+		2 optional E_HQ_SORT_COLUMN eColumn;
+		3 optional E_SORT_METHOD eSort = E_SORT_DEFAULT;
+        4 optional E_STOCK_HQ_DATA eHqData = E_SHD_NONE;      //本次返回哪些行情数据，默认不返回
+        5 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        6 optional E_STOCK_DATA_ENV eEnvData = E_SHDE_NORMAL;  //默认根据E_STOCK_HQ_DATA确定行情数据
+		7 optional int iWantNum = -1;                         //请求个数,默认-1为全部返回.
+		8 optional vector<byte>  vBitmap;    // 指定返回的字段
+        9 optional bool bDelayHq = false;                       //是否获取延时行情（主要是港股）
+        10 optional E_TYPE_MMP eTypeMmp = E_MMP_NONE;           //买卖盘口开关
+    };
+
+	struct HStock2BlockRsp
+	{
+		//一只股票属于多个板块，所以返回是列表
+		1 optional vector<HStockHq> vBlock;
+	};
+
+    // 根据自定义类型查询个股行情
+	struct HCustomType2StockReq
+	{
+		0 optional HeaderInfo stHeader;
+		1 optional E_CUSTOM_TYPE iType;                         // 类型
+		2 optional E_STOCK_HQ_DATA eHqData = E_SHD_NONE;        // 本次返回哪些行情数据,默认不返回
+        3 optional E_STOCK_DATA_ENV eEnvData = E_SHDE_NORMAL;   // 默认根据E_STOCK_HQ_DATA确定行情数据
+        4 optional int iWantNum = -1;                           // 请求个数, 默认-1为全部返回.
+        5 optional int iStartPos = 0;                           // 起始编号
+        6 optional vector<byte>  vBitmap;                       // 指定返回的字段
+	};
+    
+    
+    //根据业务类型查询板块
+	struct HSortListReq
+	{
+		0 optional HeaderInfo stHeader;
+		1 require E_BUSS_TYPE eBussType; //一个业务类型可能对于多个内部类型
+		2 optional E_HQ_SORT_COLUMN eColumn;
+		3 optional E_SORT_METHOD eSort = E_SORT_DEFAULT;		
+        4 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        5 optional int iWantNum = -1;                         //返回个数,默认-1为全部返回，否则返回前iWantNum个
+	};
+
+    struct HSortListRsp
+    {
+        0 optional vector<HStockUnique> vStock;      //股票信息
+    };
+
+    //期权表的码表请求
+    struct HOptionUnderlyingDictReq
+	{
+		0 optional HeaderInfo stHeader;		
+        1 optional vector<unsigned short> vecMarket;                                    //期权标的市场 为空 返回全部码表
+    };
+    struct HOptionUnderlyingDictRsp
+	{
+        0 optional map<unsigned short,vector<HOptionUnderlyingDictInfo> > mapDict;      //期权标的码表
+    };
+
+    struct HOptionStockReq
+	{
+		0 optional HeaderInfo stHeader;		
+        1 require unsigned short usUnderlyingMarket;          // 期权标的市场，目前只支持上海市场（1）
+		2 require string sUnderlyingCode;                     // 期权标的代码，例如：510050，标识50ETF
+		3 optional string sContractType;                      // 合约类型，与HOptionBaseInfo中的sContractType一致，例如1906A。为空时，返回所有合约类型
+		4 optional E_HQ_SORT_COLUMN eColumn;                  // 排序列
+		5 optional E_SORT_METHOD eSort = E_SORT_DEFAULT;      // 排序方法
+		6 optional E_STOCK_HQ_DATA eHqData = E_SHD_NONE;      // 本次返回哪些行情数据,默认不返回
+		7 optional int iWantNum = -1;                         // 请求个数,默认-1为全部返回.
+        8 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;  // 推送标志
+        9 optional E_STOCK_DATA_ENV eEnvData = E_SHDE_NORMAL; // 默认根据E_STOCK_HQ_DATA确定行情数据
+	    10 optional vector<byte>  vBitmap;    // 指定返回的字段
+
+    };
+
+    struct HOptionStockRsp
+ 	{
+ 		//一只股票属于多个板块，所以返回是列表
+ 		1 optional vector<HStockHq> vStock;
+ 	};
+
+     struct HEtfInfoReq
+     {
+         0 optional HeaderInfo stHeader;
+     };
+     struct HEtfInfoRsp
+     {
+         1 optional vector<HEtfDescInfo> vEtfInfo;
+     };
+
+	//根据股票查询所属行业
+	struct HStock2IndustryReq
+	{
+		0 optional HeaderInfo stHeader;		
+        1 require vector<HStockUnique> vStock;      //股票信息
+	};
+
+	struct HStock2IndustryRsp
+	{
+		//一只股票属于多个板块，所以返回是列表
+		1 optional vector<HStockIndustry> vStockIndustry;
+	};
+
+    struct HCancelPushReq
+    {
+        1 optional long lReqID; 
+    };
+
+    struct HCQCXInfoReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require vector<HStockUnique> vStock;      //股票信息
+    };
+
+    struct HCQCXInfoRsp
+    {
+        1 optional vector<HCQCX> vInfo;
+    };
+
+    struct HFinDataReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require vector<HStockUnique> vStock;      //股票信息
+    };
+
+    struct HFinDataRsp
+    {
+        1 optional vector<HFinData> vInfo;
+    };
+
+    struct HFinBatchReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sCheckSum;
+    };
+
+    struct HFinBatchRsp
+    {
+        1 optional vector<HFinData> vInfo;
+        2 optional string sCheckSum;
+    };
+
+    //新的权息数据请求
+    struct HQXInfoReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require vector<HStockUnique> vStock;      //股票信息
+    };
+
+    //新的权息数据回应
+    struct HQXInfoRsp
+    {
+        1 optional vector<SQXData> vInfo;
+    };
+
+    //新的财务数据请求
+    struct HCWDataReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require vector<HStockUnique> vStock;      //股票信息
+    };
+    
+    //新的财务数据回应 
+    struct HCWDataRsp
+    {
+        1 optional vector<SCWData> vInfo;
+    };
+
+    //新的财务数据版本请求
+    struct HCWVerReq
+    {
+        0 optional HeaderInfo stHeader;
+    };
+    
+    //新的财务数据版本回应 
+    struct HCWVerRsp
+    {
+        1 optional vector<HCWVerData> vInfo;
+    };
+
+	//新的流通股变动数据请求
+    struct HLTGChgReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional vector<HStockUnique> vStock;      //包含版本的股票信息
+    };
+    
+    //新的流通股变动数据回应 
+    struct HLTGChgRsp
+    {
+        1 optional vector<HLTGChg> vInfo;
+    };
+
+    struct HFileReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sFileName;         //获取的文件名
+        2 optional int iPos;                 //文件偏移
+        3 optional string sCheckSum;         //文件md5
+        4 optional int iLen;                 //本次获取内容长度
+        5 optional bool bCompress;           //获取压缩或者非压缩文件 
+    };
+
+    struct HFileRsp
+    {
+        1 require bool bChg = false;           // 文件是否发生变化          
+        2 optional vector<byte> vBuf;          // 文件内容
+        3 require bool bRemain = false;        // 是否还有内容未发送, 保证每次都下发这个值，避免死循环
+        4 optional string sCheckSum;           // bRemain为false的时候会返回整个文件checksum
+        5 optional int iCompressSize;          // 压缩的size
+        6 optional int iRawSize;               // 原始文件size
+    };
+
+	struct HFileBatchReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional vector<HFileInfo> vFileInfo;         //文件信息
+
+    };
+
+    struct HFileBatchRsp
+    {      
+        1 optional vector<HFileData> vFileData;        //文件内容
+    };
+
+    struct HProxyRegReq
+    {
+        0 optional HeaderInfo stHeader;
+    };
+
+    struct HProxyRegRsp
+    {
+        1 optional long lSerialNo;
+    };
+
+    struct HProxyStatReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sProxyAddr;
+        2 optional int iActiveCount;
+    };
+
+    struct HProxyStatRsp
+    {
+        0 optional int iRet;
+    };
+
+	///////////////////////////////分类行情：end////////////////////////////
+
+    //////////////////////////////分类行情推送部分:begin/////////////////////////
+    /////TODO
+    struct HType2StockPushReq
+    {
+        0 optional HeaderInfo stHeader;
+    };
+    
+    struct HType2StockPushRsp
+    {
+        1 optional vector<HStockHq> vStockHq;
+    };
+    
+    
+    
+    //////////////////////////////分类行情推送部分:end////////////////////
+
+	struct HIntervalReq
+    {
+        0 optional HeaderInfo stHeader;   //header里的市场填对应的市场，现只支持深沪市场
+    };
+    
+    struct HIntervalRsp
+    {
+		1 optional bool bTrading = false;         //是否在交易时间
+        2 optional long lInterval;        //下一次请求行情时间间隔
+        3 optional unsigned int iSequence;
+    };
+
+    //综合排名请求
+    struct HZHRankReq
+    {
+        0 optional HeaderInfo stHeader;     //header里的市场填对应的市场，现只支持深沪市场
+        1 optional E_BUSS_TYPE eStockType;  //股票类别(沪深类型，不包括板块)
+        2 optional int iNum;                //排名数，需要几名
+        3 optional H_ZH_RANK_TYPE eRankType;//综合排名类型
+		4 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+
+    //综合排名回包
+    struct HZHRankRsp
+    {
+        1 optional vector<HZHRankData> vRank;    //综合排名数据
+    };
+
+    //资金排名请求，精简版
+    struct HMFRankSimReq
+    {
+        0 optional HeaderInfo stHeader;     //header里的市场填对应的市场，现只支持深沪市场
+        1 optional E_BUSS_TYPE eStockType;  //股票类别(只有EBT_A和板块EBT_BLK_ALL)
+        2 optional int iNum;                //排名数，需要几名
+        3 optional E_MF_RANK_SORT_COLUMN eRankType = EMRC_DAY_ZLLR;   //暂时只有主力资金净流入
+		4 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+
+    //资金排名回包，精简版
+    struct HMFRankSimpRsp
+    {
+        0 optional vector<HStockRankData> vTop;    //资金排名前几名数据
+        1 optional vector<HStockRankData> vLast;    //资金排名后几名数据
+    };
+
+    //板块领涨请求，精简版
+    struct HBKLedReq
+    {
+        0 optional HeaderInfo stHeader;     //header里的市场填对应的市场，现只支持深沪市场
+        1 optional E_BUSS_TYPE eStockType;  //股票类别(只有EBT_BLK_HY和板块EBT_BLK_GN)
+        2 optional int iBlockNum;           //板块排名数，需要几名
+        3 optional int iStockNum;           //板块下stock排名数，需要几名
+		4 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+
+    //板块领涨回包，精简版
+    struct HBKLedRsp
+    {
+        1 optional vector<HBKLedData> vRank;    //领涨数据
+    };
+
+	//4419，获取个股指定类别的DDZ数据, 请求结构
+    struct HStockDDZReq
+    {
+		0 optional HeaderInfo stHeader;
+        1 require string sCode;
+        2 require HISTORY_DATA_TYPE eType;        //请求DDZ数据类型,目前支持1、5、15、30、60分钟级别、当日分时、日、周、月、季、年。
+        3 optional short shtStartxh = 0;          //起始位置
+        4 optional short shtWantNum = 100;        //请求个数
+        5 optional long lDate=-1;                 //日期YYYYMMDDHHmm，如果此字段不为-1，则以此字段为主，忽略shtStartxh
+        6 optional E_MONEYFLOW_TYPE eMfType = E_MONEYFLOW_DOUBLE;    //资金流类型，默认双向资金流
+        7 optional short shtWantDay = 0;          //请求天数(不为0时，shtWantNum无效)
+        8 optional bool bIncludeDate = false;     //返回数据是否包含lDate
+    };
+    //4419，获取个股指定类别的DDZ数据, 回包结构
+    struct HStockDDZRsp
+    {
+        1 optional vector<HDDZData> vDDZData; //根据请求进行除权除息计算
+    };
+
+    // 注册市场请求结构
+    struct HRegStatusReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+
+    // 回包,市场类型和状态
+    struct HRegStatusRsp
+    {
+        0 optional vector<HTypeStatusData> vTypeStatus; //市场状态数据，只有市场交易状态有变化才会触发push 内盘用
+        1 optional long lMarketTime;    //市场当前时间，格式:20171122150933，时间只是附带数据，市场时间变化不会触发push
+        2 optional short nMarketStatus; //外盘用 市场状态 对应MQT_Trade_Flag
+        3 optional vector<HMarketStatusData> vMktStatus;//新版市场->类型->子类型状态
+    };
+
+	//上报客户端信息，目前只有SDK版本号
+	struct HCltInfoReq
+    {
+        0 optional HeaderInfo stHeader;
+		1 optional int iSdkVer = 0;        //客户端传入的SDK版本
+    };
+
+    struct HCltInfoRsp
+    {
+        1 optional E_CLT_INFO_STATUS eStatus;
+    };
+
+    //获取新股上市表现, 请求结构
+    struct HNewStockPerformReq
+    {
+		0 optional HeaderInfo stHeader;
+        1 optional unsigned int iStartxh = 0;    //起始位置
+        2 optional unsigned int iWantNum = 10;   //请求个数
+    };
+    //获取新股上市表现, 回包结构
+    struct HNewStockPerformRsp
+    {
+        1 optional vector<HNewStockPerform> vStock;   //新股上市表现数据
+    };
+
+    //按证券获取新股上市表现, 请求结构
+    struct HNewStockPerformByStockReq
+    {
+		0 optional HeaderInfo stHeader;
+        1 optional vector<HStockUnique> vStock;                      //股票信息
+    };
+
+    //区间统计请求
+    struct HRangeStatsReq
+    {
+		0 optional HeaderInfo stHeader;
+        1 require vector<HStockUnique> vStock;       //股票信息
+        2 require HISTORY_DATA_TYPE eLineType;       // 请求k线数据类型
+        3 optional short shtStartxh = 0;             // 起始位置
+        4 optional short shtWantNum = 0;             // 请求个数，若shtWantNum大于0，则使用偏移模式，忽略下面的日期
+        5 optional int iStartDate = 0;               // 起始日期，数据类型YYYYMMDD
+        6 optional int iEndDate = 0;                 // 结束日期，数据类型YYYYMMDD
+		7 optional E_QX_MODE eQxMode = EQM_QX_NONE;  // 复权类型
+        8 optional vector<byte> vBitmap;             // 指定返回的字段 
+    };
+
+    //区间统计
+    struct HStockRangeStats
+    {
+		0 optional unsigned short shtPrecise;   //精度
+		1 optional short shtSetcode;            //股票市场
+		2 optional string sCode;                //股票代码
+		3 optional double fHigh;                //区间最高价
+		4 optional double fClose;               //起始日前一日收盘价，若是起始日为上市首日，则取起始日开盘价
+		5 optional double fPrice;               //区间最新价
+    };
+
+    //区间统计回包
+    struct HRangeStatsRsp
+    {
+        1 optional vector<HStockRangeStats> vData;
+    };
+
+    struct HRadarQtReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional int iWantNum = -1;       //响应包有效
+        2 optional int iStartPos = 0;        //响应包有效
+        3 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+
+    struct HRadarQtRsp
+    {
+        0 optional vector<HRadarQt> vecQt;
+    };
+
+    struct HRadarChgReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional int iWantNum = -1;       //响应包有效
+        2 optional int iStartPos = 0;        //响应包有效，>=0表示正向拉起，<0表示反向拉取，-1为从最新的一根开始
+        3 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+
+    struct HRadarChgRsp
+    {
+        0 optional vector<HRadarChg> vecChg;
+    };
+
+	struct HOrderClassifyReq
+	{
+	    0 optional HeaderInfo stHeader;
+        1 optional int iOrderType;        // 委托单类别，仅限于新增的压单、托单、夹单、跳价出货单、对倒单参考E_STOCK_ORDER_TYPE
+        2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        3 optional vector<int> vOrderTypes;  // 如果委托单类别数组不为空，则以vOrderTypes为准，忽略iOrderType；否则以iOrderType为准
+        4 optional int dataType = 1;         // 0: 只需要次数；1：次数和列表详情
+        5 optional vector<HStockUnique> vStocks; // 个股列表，如果不为空，取相应个股的L2数据详情，否则取全体数据
+	};
+
+    // 推送的时候是增量
+    struct OrderClassifyBasic
+    {
+        0 optional HStockUnique stock;
+        1 optional int iOrderType;
+        2 optional int count;
+    };
+
+	struct HOrderClassifyRsp
+	{
+	   1 optional vector<HOrderClassify> vOrder;
+       2 optional vector<OrderClassifyBasic> vBasic;
+	};
+
+	struct HSyntReq
+	{
+		0 optional HeaderInfo stHeader;
+		1 optional vector<E_STOCK_CATEGORY> vCategory;
+		2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+	};
+
+	struct HSyntRsp
+	{
+		1 optional vector<HSyntInfo> vSynt;
+	};
+
+	struct HPankouRadioReq
+	{
+		0 optional HeaderInfo stHeader;
+		1 optional string sCode;
+	};
+
+	struct HPankouRadioRsp
+	{
+		1 optional HPankouRadio stBuyInfo;   //买盘筛选出的档位数据
+		2 optional HPankouRadio stSellInfo;  //卖盘筛选出的档位数据
+	};
+
+
+    struct HOrderBookReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sCode;
+        2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;    //注册flag
+    };
+
+    struct HOrderBookRsp
+    {
+        1 optional vector<HOrderBookItem> vBid;     //买盘
+        2 optional vector<HOrderBookItem> vAsk;     //卖盘
+        3 optional long lTime;                      //时间
+        4 optional short shtMarket;                 //市场
+        5 optional string sCode;                    //代码
+    };
+
+	struct HHkWarrantReq
+	{
+		0 optional HeaderInfo stHeader;
+		1 optional string sCode;
+		2 optional E_HK_WARRANT_TYPE eType;
+		3 optional E_HQ_SORT_COLUMN eColumn;                // 排序列
+		4 optional E_SORT_METHOD eSort = E_SORT_DEFAULT;    // 排序方法
+		5 optional int iStartPos = 0;                       // 起始编号
+		6 optional int iWantNum = -1;                       // 请求个数,默认-1为全部返回
+	};
+
+	struct HHkWarrantRsp
+	{
+		1 optional vector<HWarrantData> vStock;
+		2 optional int iTotalNum; // 总个数
+	};
+	
+	struct HWarrantHkReq
+	{
+		0 optional HeaderInfo stHeader;
+		1 optional string sCode;
+	};
+
+	struct HWarrantHkRsp
+	{
+		1 optional HWarrantHkData stStock;
+	};
+
+	struct HServerInfoReq     
+	{
+        0 optional HeaderInfo stHeader;
+    };
+
+    struct HServerInfoRsp
+    {
+        0 optional int iConnNum;
+        1 optional int iMaxConnNum;
+    };
+
+	struct HVolPriceReq
+	{
+	    0 optional HeaderInfo stHeader;
+        1 optional string sCode;
+		2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;    //注册flag
+	};
+
+    //价量统计
+    struct HPriceVolStats
+    {
+        1 optional double dAvgPrice;    //平均成交价
+        2 optional long lTradeNum;      //总成交笔数
+        3 optional long lVolume;        //总成交量（股）
+        4 optional long lBuyVol;        //主买（股）
+        5 optional long lSellVol;       //主卖（股）
+    };
+
+    //逐笔成交统计数据
+    struct HStatisticTransData
+    {
+        0 optional HPriceVolInfo transMax;		            //成交量最高的价格档位
+        1 optional HPriceVolStats transStats;               //成交统计
+    };
+
+    // 基于逐笔成交
+	struct HVolPriceRsp
+	{
+		1 optional map<double, unsigned int> mVolPrice;     // key为价格，value为成交量 单位是股
+        2 optional HStatisticTransData  statisticTrans;    //基于逐笔成交 统计数据
+        3 optional map<int, HTransVolNum> mVolNum;          //成交量范围(TRANS_VOL_RANGE)->买卖笔数
+        4 optional map<double, HPriceVolInfo> mPriceInfo;   //价格->成交统计
+	};
+
+	struct HAllOrderPerspReq
+	{
+	    0 optional HeaderInfo stHeader;
+        1 optional string sCode;
+	};
+
+    // 上海市场，基于买卖十档（委托）
+	struct HAllOrderPerspRsp
+	{
+		0 optional map<float, unsigned int> mapPrice2Vol; // key为价格，value为委托量
+	};
+
+	struct HProxyHeartReq
+    {
+        0 optional HeaderInfo stHeader;
+    };
+
+    struct MarketMonitorInfo
+    {
+        0 optional long         lTradeTime;                            // 交易时间, 格式：YYYYMMDDHHMMSS
+        1 optional string       sCvt;                                  // cvt地址，格式：x.x.x.x:x
+    };
+
+    struct GetMonitorInfoReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string     sPassword;                              // 访问控制
+    };
+
+    struct GetMonitorInfoRsp
+    {
+        0 optional map<short, MarketMonitorInfo>   mapMarketInfo;       // 行情信息，格式：YYYYMMDDHHMMSS
+        1 optional map<int, long>                  mapOnlines;          // 在线人数，key为设备类型，value为在线人数，0：其他设备；1：安卓；2：苹果；3：极致版PC；4：奔牛PC
+        2 optional float                           cpuUse;              // cpu使用率
+        3 optional float                           diskUse;             // 磁盘使用率
+    };
+
+    struct MarketTradeCaleUnit
+    {
+        0 optional short      shtMarket;    // 市场
+        1 optional int        iStart;       // 起始日期，格式：YYYYMMDD
+        2 optional int        iEnd;         // 结束日期，格式：YYYYMMDD，若结束日期为0，表示为当前最新交易日
+    };
+
+    struct GetMarketTradeCaleReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional vector<MarketTradeCaleUnit> vMarketUnit;
+    };
+
+    struct GetMarketTradeCaleRsp
+    {
+        0 optional map<short, vector<TradeCale>> mapTradeCale; // 交易日历
+    };
+
+    //扩展板行情监控接口
+    struct HSysMonitorReq
+    {
+        0 optional HeaderInfo stHeader;   
+        1 optional string     sPermissionKey;                 // PermissionKey
+        2 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+
+    struct HSysMonitorRsp
+    {
+        0 optional map<short, MarketMonitorInfo>   mapMarketInfo;       // 行情信息，格式：YYYYMMDDHHMMSS
+        1 optional map<int, long>                  mapOnlines;          // 在线人数，key为设备类型，value为在线人数，0：其他设备；1：安卓；2：苹果；3：极致版PC；4：奔牛PC
+        2 optional Monitor::SysMonitorInfo         monitorInfo;         //系统信息
+        3 optional unsigned int                    uiTotalOnlines;      //总在线人数
+        4 optional unsigned int                    uiMaxOnlines;        //最大线人数
+        5 optional bool                            bValid = true;	    //是否可用，即连接状态 主要是监控服务用
+    };
+
+    //监控服务获取主站guid集合
+    struct HGetGuidReq
+    {
+        0 optional HeaderInfo stHeader;   
+        1 optional string     sPermissionKey;                 // PermissionKey
+    };
+
+    struct HGetGuidRsp
+    {
+        0 optional vector<string>                  vecGuidSet;       // 行情信息，格式：YYYYMMDDHHMMSS
+    };
+
+    //监控服务获取主站SN信息
+    struct HGetSNInfoReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sPermissionKey;
+    };
+
+    struct HGetSNInfoRsp
+    {
+        0 optional map<string, long> mapSNInfo;
+    };
+    
+    struct HGGTQXReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional vector<int>  vecDate;                      //根据日期YYYYMMDD来请求，返回这个日期下有分红的股票数据
+    };
+
+    struct HGGTQXRsp
+    {
+        0 optional map<int,vector<HGGTStockQXInfo> >  mapStock;   //股票集合,key是日期YYYYMMDD
+    };
+
+    struct HGGTRateReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional vector<int>  vecDate;                        //根据日期YYYYMMDD来请求，只返回这个日期下的数据
+    };
+
+    struct HGGTRateRsp
+    {
+        0 optional map<int,HGGTRate> mapRate;                       //返回日期YYYYMMDD下的结算汇率
+    };
+
+    struct HYYDataReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional short      shtMarket;                            // 市场
+        2 optional vector<HStockUnique> vStock;                     // 如果为空，则返回shtMarket下的所有数据
+    };
+
+    struct HYYDataRsp
+    {
+        0 optional int iTotal = 0;                                  // 总数
+        1 optional vector<HYYInfo> vData;                           // 要约数组
+    };
+
+    struct HFXDataReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional short      shtMarket;                            // 市场
+        2 optional vector<HStockUnique> vStock;                     // 如果为空，则返回shtMarket下的所有数据
+    };
+
+    struct HFXDataRsp
+    {
+        0 optional int iTotal = 0;                                  // 总数
+        1 optional vector<HFXInfo> vData;                           // 发行数组
+    };
+
+
+    struct GetSouthMoneyFlowReq
+    {
+        0 optional HeaderInfo stHeader;
+    };
+
+    struct HSouthMoneyFlow
+    {
+        0 optional unsigned int iDate = 0;
+        1 optional unsigned int iTime = 0;
+        2 optional double dTotalAmt = 0;    //总额
+        3 optional double dBalance = 0;     //配额
+    };
+
+    struct GetSouthMoneyFlowRsp
+    {
+        0 optional map<short, HSouthMoneyFlow> mapSouthMoneyFlow;    //key为类型，1：沪港通；2：深港通
+    };
+
+    struct HFutureNameListReq
+    {
+        1 optional vector<short> vMarket;
+    };
+
+    struct HFutureNameListRsp
+    {
+        1 optional map<short,map<short,string>> mListName;                      // <市场 , <类型, 名字> >
+    };
+
+    struct HStockAuctionRsp
+    {
+        1 optional vector<HStockAuction> vStockHq;
+    };
+
+    struct HRtminAuctionReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 require string sCode;
+        2 optional int iStartPos = 0;
+        //3 optional bool bAuction = false;       //是否包含集合竞价分时数据
+        4 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+
+    struct HRtminAuctionRsp
+    {
+        1 optional vector<HRTMinDataAuc> vRTMinAuc;
+		2 optional int iDate;             //最新交易日期，分时需要与五日分时做对比   
+        //用于方便PC映射应答与请求
+        3 optional string sCode;          //股票代码      
+        4 optional short shtSetcode;      //股票市场  
+    };
+
+    //北向、南向资金数据(对应涨呗陆股通港股通左侧的表格数据)
+    struct HSNFundDataReq
+    {
+        0 optional HeaderInfo stHeader; //header里面市场61南向 62北向
+        1 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+    };
+    struct HSNFundDataRsp
+    {
+        0 optional vector<HSNFundsData> vSNFundData;
+        1 optional int iDate;
+    };
+
+    //南北向资金的净买入或净流入分时图数据
+    struct HSNNetDataReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        2 optional bool bNetBuy;        //true:净买入 false:净流入
+        3 optional int iStartPos = 0;
+    };
+    struct HSNNetDataRsp
+    {
+        0 optional vector<HSNNetData> vNetData;   //沪深净买入或净流入数据
+    };
+
+    //南北向资金的历史净买入或净流入数据
+    struct HHisSNNetDataReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional bool bNetBuy;        //true:净买入 false:净流入
+        2 optional short shtWantNum;    //历史净数据天数
+        3 optional HISTORY_DATA_TYPE eLineType = HDT_DAY_KLINE; // 请求k线数据类型
+    };
+    struct HHisSNNetDataRsp
+    {
+        0 optional vector<HSNNetData> vHisNetData;   //沪深历史净买入或净流入数据
+    };
+
+    //键盘精灵接口
+    struct HJPJLReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional string sInput;                       // 模糊查询的输入
+        2 optional int iMaxNum = 5;                     // 查询返回的最大数量
+        3 optional vector<HMarketTypeFilt> vecMktType;   // 按市场股票类型过滤(每个市场的意义都不同,替代vMarkets,vecReqType字段)
+        4 optional vector<HTypeFilt> vecType;            // 按类型/子类型过滤
+    };
+
+    struct HJPJLRsp
+    {
+        0 optional vector<HJPJLStock> vStock;
+    };
+
+    //请求排序（暂时只支持沪深京）
+    struct HStockRankReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional int iRankType = 0;           //0：按照E_BUSS_TYPE排序（eBussType+vType）；1：按照板块排序（vBlockCode）；2：按照分类排序（vCategory）；3：按照股票代码排序（vStock）
+        2 optional E_BUSS_TYPE eBussType;       //一个业务类型可能对于多个内部类型
+        3 optional vector<HTypeSubType> vType;  //按类型,子类型过滤(E_BUSS_TYPE为EBT_T_SUB，EBT_T_A_SUB和EBT_T_M_SUB时vSubType才有意义)
+        4 optional vector<string> vBlockCode;   //板块ID
+        5 optional vector<E_STOCK_CATEGORY> vCategory;      //分类
+        6 optional vector<HStockUnique> vStock;             //股票代码
+        7 optional E_HQ_SORT_COLUMN eColumn;                //排序的列
+        8 optional E_SORT_METHOD eSort = E_SORT_DEFAULT;    //排序方式
+        9 optional int iStartPos = 0;                       //起始位置
+        10 optional int iWantNum = -1;                      //请求个数,默认-1为全部返回
+        11 optional vector<E_RANK_FILTER_TYPE> vFilterType; //过滤类型，不支持外盘，ST、新股、次新股、科创板、创业板
+    };
+
+    struct HStockRankRsp
+    {
+        1 optional vector<HStockUnique> vData;              //排序之后的股票
+        2 optional int iTotalSize = 0;                      //总大小
+    };
+
+    struct HXrdFactorReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional vector<short> vMarket;
+        2 optional vector<HStockUnique> vStock;
+    };
+
+    struct HXrdFactorRsp
+    {
+        0 optional vector<HStockXrdFactor> vData;
+    };
+
+    struct HMarketCloseInfoReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional vector<short> vMarket; // 要获取休市提示信息的市场
+    };
+    struct HMarketCloseInfoRsp
+    {
+        0 optional unsigned int iDate; // 北京时间的当日日期，格式为yyyymmdd
+        1 optional map<short, string> mMarketCloseTips; // 市场 => 休市提示信息
+    };
+
+    //涨跌分布数据 仅支持当前交易日 不支持历史的
+    struct HZDFenbuReq
+    {
+        0 optional HeaderInfo stHeader;
+        1 optional E_HQ_PUSH_REG ePushFlag = E_HQ_PUSH_NONE;
+        2 optional vector<short> vecType;   //返回数据类型,值为E_ZDFENBU_TYPE
+        3 optional short shtWitdh;          //区间宽度 如2%-4%宽度为2 5%-6%宽度为1
+    };
+
+    struct HZDFenbuRsp
+    {
+        0 optional map<int, HZDFenBuInfo> mapData;    //粗略数据 key为E_ZDFENBU_TYPE
+    };
+
+    // 交易状态-名称映射请求结构
+    struct HTradeStatusNameReq
+    {
+        0 optional HeaderInfo stHeader;
+    };
+
+    struct HTradeStatusNameRsp
+    {
+        0 optional map<int, string> mapAData; //内盘
+        1 optional map<int, string> mapMData; //外盘
+    };
+
+    struct HCurrencyInfoReq
+    {
+        0 optional HeaderInfo stHeader;
+    };
+
+    struct HCurrencyInfoRsp
+    {
+        0 optional vector<HCurrencyInfo> vInfo;
+    };
+
+    interface BasicHq
+    {
+        //////////////////////////////基本信息接口begin/////////////////////////////
+		/**
+        *心跳请求，用于客户端保持与代理长连接
+        */
+        int heartBeat(HProxyHeartReq stReq);
+            
+        /*
+        ** 功能简介：获取股票除权数据（老版本数据格式），已弃用
+        ** 原协议代码：15
+        */
+        //int getCQCXInfo(HCQCXInfoReq stReq, out HCQCXInfoRsp stRsp);
+        
+        /*
+        ** 功能简介：获取股票财务数据（老版本数据格式），已弃用
+        ** 原协议代码：16
+        */
+        //int getFinData(HFinDataReq stReq, out HFinDataRsp stRsp);
+
+        /*
+        ** 功能简介：获取单个市场股票财务数据，已弃用
+        ** 原协议代码：
+        */
+        //int finBatch(HFinBatchReq stReq, out HFinBatchRsp stRsp);
+        
+        /*
+        ** 功能简介：获取股票除权数据（新版本数据格式）
+        ** 原协议代码：15
+        */
+        int getQXInfo(HQXInfoReq stReq, out HQXInfoRsp stRsp);
+        
+        /*
+        ** 功能简介：获取股票财务数据（新版本数据格式）
+        ** 原协议代码：16
+        */
+        int getCWData(HCWDataReq stReq, out HCWDataRsp stRsp);
+        
+        /*
+        ** 功能简介：获取股票财务数据版本更新日期（新版本数据格式）
+        ** 原协议代码：配合getCWData使用，返回所有更新日期
+        */
+        int getCWVer(HCWVerReq stReq, out HCWVerRsp stRsp);
+
+        /*
+        ** 功能简介：获取流通股变动数据（新版本数据格式）
+        */
+        int getLTGChg(HLTGChgReq stReq, out HLTGChgRsp stRsp);      
+ 
+        /*
+        ** 功能简介：获取文件
+        ** 原协议代码：704,709
+        */
+        int getFile(HFileReq stReq, out HFileRsp stRsp);
+
+        /*
+        ** 功能简介：可以获取多个文件内容
+        */
+        int getFileBatch(HFileBatchReq stReq, out HFileBatchRsp stRsp);
+
+        /*
+        ** 功能简介：获取股票基础信息
+        ** 原协议代码：4202
+        */
+        int stockBaseInfo(HStockBaseInfoReq stReq, out HStockBaseInfoRsp stRsp);
+        int stockBaseInfoSimple(HStockBaseInfoSimpleReq stReq, out HStockBaseInfoSimpleRsp stRsp);
+
+        /*
+        ** 功能简介：获取股票静态信息（个股名称utf8）
+        ** 原协议代码：4202
+        */
+        int stockStaticInfo(HStockBaseInfoReq stReq, out HStockStaticInfoRsp stRsp);
+       
+        /*
+        ** 功能简介：按市场获取基础信息(附带校验码)
+        */
+        int marketBaseInfo(HMarketBaseInfoReq stReq, out HMarketBaseInfoRsp stRsp);
+
+        /**
+        * 用户登录请求
+        * 原ads协议：5000
+        */
+        int userLogin(HUserLoginReq stReq, out HUserLoginRsp stRsp);
+
+        /**
+        * 用户登陆请求
+        * 请求参数仅使用userid
+        */
+        int userSimpleLogin(HUserSimpleLoginReq stReq, out HUserSimpleLoginRsp stRsp);
+	 
+        /*
+		** 功能简介：获取市场的码表信息
+		**
+		*/
+		int stockDict(HStockDictReq stReq, out HStockDictRsp stRsp);
+        int stockDictSimple(HStockDictSimpleReq stReq, out HStockDictSimpleRsp stRsp);
+        
+        /*
+        ** 功能简介：获取单个市场股票基础信息
+        ** 原协议代码：
+        */
+        int stockBaseBatch(HStockBaseBatchReq stReq, out HStockBaseBatchRsp stRsp);
+        
+        /*
+        ** 功能简介：获取沪深除权除息信息
+        ** 原协议代码：内部交易组需求
+        */
+        int getCQCX(HCQCXReq stReq, out HCQCXRsp stRsp);
+        
+        /*
+        ** 功能简介：获取全市场交易时期数据
+        ** 原协议代码：4412
+        */
+        int getTradePeriod(HTradePeriodReq stReq, out HTradePeriodRsp stRsp);
+        
+        /*
+        ** 功能简介：获取市场完整的交易时间段,尽量不要用getTradePeriod，数据不全
+        */
+        int getPeriod(HPeriodReq stReq, out HPeriodRsp stRsp);
+
+		/*
+        ** 功能简介：获取下一次拉取行情的时间间隔
+        */
+        int getInterval(HIntervalReq stReq, out HIntervalRsp stRsp);
+
+        /*
+        ** 功能简介：综合排名请求
+        ** 原协议代码：ads 1205协议
+        */
+        int zhRank(HZHRankReq stReq, out HZHRankRsp stRsp);
+
+        /*
+        ** 功能简介：资金排名（PC端使用，字段精简）
+        */
+        int mfRankSimp(HMFRankSimReq stReq, out HMFRankSimpRsp stRsp);
+
+        /*
+        ** 功能简介：领涨板块（PC端使用，字段精简）
+        */
+        int bkLed(HBKLedReq stReq, out HBKLedRsp stRsp);
+
+        
+        /**
+        * 期权基本信息
+        */
+        int optionBaseInfo(HOptionBaseInfoReq stReq, out HOptionBaseInfoRsp stRsp);
+        
+        /**
+        * 期权表的码表
+        */
+        int optionUnderlyingDict(HOptionUnderlyingDictReq stReq, out HOptionUnderlyingDictRsp stRsp);
+        
+        /**
+        * 期权列表信息
+        */
+        int optionStock(HOptionStockReq stReq, out HOptionStockRsp stRsp);
+
+        /**
+        * ETF基金信息
+        */
+        int etfInfo(HEtfInfoReq stReq, out HEtfInfoRsp stRsp);
+
+        //////////////////////////////基本信息接口end/////////////////////////////
+        
+        
+        
+        //////////////////////////////行情接口:begin///////////////////////////////////
+        /*
+        ** 功能简介：获取股票的行情
+        ** 原协议代码：4202
+        */
+        //4202协议(兼容4212协议--适配器过滤），获取股票的行情信息
+        int stockHq(HStockHqReq stReq, out HStockHqRsp stRsp);
+        int qt(HStockHqReq stReq, out HStockHqRsp stRsp);
+
+        //精简版行情（主要给web用）
+        int stockHqSimple(HStockHqSimpleReq stReq, out HStockHqSimpleRsp stRsp);
+
+		/*
+        ** 功能简介：获取自选股扩展字段
+        ** 原协议代码：app新增
+        */
+        int optStockHqEx(OptStockHqExReq stReq, out OptStockHqExRsp stRsp);
+        
+        /*
+        ** 功能简介：获取股票的行情（app旧的自选股接口，现在新版app不再使用）
+        */
+        int optStockHq(HOptStockHqReq stReq, out HOptStockHqRsp stRsp);
+ 
+        /*
+        ** 功能简介：获取个股当日分时走势图数据；获取个股买卖力道数据
+        ** 原协议代码：4205
+        */
+        int rtMinData(HRTMinDataReq stReq, out HRTMinDataRsp stRsp);
+        int rtMinDataSimple(HRTMinDataSimpleReq stReq, out HRTMinDataSimpleRsp stRsp);
+
+		/*
+		** 功能简介：获取个股历史分时数据
+		** 原协议代码：adsproxy 5013
+	    */
+	    int hisRtMinute(HHisMinuteReq stReq, out HHisMinuteRsp stRsp);
+        int hisRtMinuteSimple(HHisMinuteSimpleReq stReq, out HHisMinuteSimpleRsp stRsp);
+
+        /*
+        ** 功能简介：获取个股多日历史分时数据
+        ** 原协议代码：
+        */
+        int hisMinBatch(HHisMinBatchReq stReq, out HHisMinBatchRsp stRsp);
+        int hisMinBatchSimple(HHisMinBatchSimpleReq stReq, out HHisMinBatchSimpleRsp stRsp);
+        
+        /*
+        ** 功能简介：获取个股的tick数据
+        ** 原协议代码：4207
+        */    
+        int tickData(HTickDataReq stReq, out HTickDataRsp stRsp);
+        
+        /*
+        ** 功能简介：获取个股的历史tick数据
+        ** 原协议代码：ads 4201
+        */    
+        int hisTick(HHisTickReq stReq, out HHisTickRsp stRsp);
+        
+        /*
+        ** 功能简介：获取个股实时资金流数据
+        ** 原协议代码：1802
+        */
+        int stockMFlow(HStockMFlowReq stReq, out HStockMFlowRsp stRsp);
+
+        /*
+        ** 功能简介：获取深沪市场多只股票的实时资金流数据
+        ** 原协议代码：4223
+        */
+        int stockMFlowBatch(HStockMFlowBatchReq stReq, out HStockMFlowBatchRsp stRsp);
+        
+        /*
+        ** 功能简介：获取深沪市场个股历史日资金流数据（按照个股交易日取）
+        ** 原协议代码：4224
+        */  
+        int stockMFlowByDay(HMFlowByDayReq stReq, out HMFlowByDayRsp stRsp);
+        
+        /*
+        ** 功能简介：获取深沪市场个股历史日资金流数据（按照市场开市日取）
+        ** 原协议代码：4224
+        */  
+        int mfByTrade(HMFByTradeReq stReq, out HMFByTradeRsp stRsp);
+
+        /*
+        ** 功能简介：下载深沪市场个股历史资金流数据，附带校验码
+        ** 原协议代码：5025
+        */
+        int stockMFlowData(HStockMFlowDataReq stReq, out HStockMFlowDataRsp stRsp);
+        
+        /*
+        ** 功能简介：下载深沪市场个股（批量支持双向/主动/被动资金流）历史资金流数据，附带校验码
+        ** 
+        */
+        int stockBatchMFlowData(HStockBatchMFlowDataReq stReq, out HStockBatchMFlowDataRsp stRsp);
+
+        /*
+        ** 功能简介：获取个股的K线数据
+        ** 原协议代码：4206
+        */
+        int kLineData(HKLineDataReq stReq, out HKLineDataRsp stRsp);
+        int kLineDataSimple(HKLineDataSimpleReq stReq, out HKLineDataSimpleRsp stRsp);
+
+        /*
+        ** 功能简介：注册个股的K线数据，目前只会推送分钟k，给pc端使用
+        ** 原协议代码：
+        */
+        int regKLine(HRegKLineReq stReq, out HRegKLineRsp stRsp);
+        int regKLineSimple(HRegKLineSimpleReq stReq, out HRegKLineSimpleRsp stRsp); //regKLine接口定制版，主要用json
+
+        /*
+        ** 功能简介：新增k线接口，获取多只股票从起始时间到结束时间的除权除息K线数据
+        ** 原协议代码：
+        */
+        int kLineDataByPeriod(HKLineDataByPeriodReq stReq, out HKLineDataByPeriodRsp stRsp);
+        int kLineDataByPeriodSimple(HKLineDataByPeriodSimpleReq stReq, out HKLineDataByPeriodSimpleRsp stRsp);
+
+        /*
+        ** 功能简介：获取单支个股时间范围的不复权K线，附带校验码
+        */
+        int stockKLineData(HStockKLineReq stReq, out HStockKLineRsp stRsp);
+
+        /*
+        ** 功能简介：获取深沪市场的资金流排名数据
+        **资金排名分当日，3日，5日，10日，可根据主力，散户，超大，大，中，小资金流向等指标排序，支持升降序
+        **支持查个股或列表，限沪深，传入code为空时，查的是列表
+        ** 原协议代码：4225
+        */  
+        int mfRank(HMFlowRankReq stReq, out HMFlowRankRsp stRsp);
+    
+        /*
+        ** 功能简介：获取深沪市场的DDE排名数据
+        ** 原协议代码：4226
+        */
+        int stockDDERank(HDDERankReq stReq, out HDDERankRsp stRsp);
+
+        /*
+        ** 功能简介：获取多只股票的DDE数据
+        ** 原协议代码：4401
+        */
+        int stockDDEBatch(HStockDDEBatchReq stReq, out HStockDDEBatchRsp stRsp);
+
+        /*
+        ** 功能简介：深沪短线精灵数据列表
+        */
+        int dxjl(HDxjlReq stReq, out HDxjlRsp stRsp);
+        
+        /*
+        ** 功能简介：LV2监控，短线精灵
+        **可拉取个股或列表LV2监控数据，根据参数里填的code确定，没有code则拉取列表；有则取个股，可批量查个股，但不排序
+        **拉取列表时可根据参数确定排序的列，并且支持升降序
+        */
+        int l2Monit(HL2MonitReq stReq, out HL2MonitRsp stRsp);
+        
+        
+        /*
+        ** 功能简介：LV2识庄风云
+        **可拉取个股或列表LV2识庄风云数据，根据参数填的code确定，没有code则拉取列表；有则取个股，可批量查个股，但不排序
+        **拉取列表时，可根据次数，总量，总额等排序，支持升降序
+        */
+        int l2Szfy(HLV2SZFYReq stReq, out HLV2SZFYRsp stRsp);
+        
+		/*
+        ** 功能简介：LV2识庄风云合并
+        **拉取列表LV2识庄风云合并后的数据，合并分为：拖拉机买卖单合并，顶级买卖单合并，主力撤单买卖单合并
+        */
+        int l2SzfyCom(HSZFYComReq stReq, out HSZFYComRsp stRsp);
+        
+        /*
+        ** 功能简介：获取AH股票行情
+        ** 原协议代码：4409
+        */
+        int stockAHList(HStockAHListReq stReq, out HStockAHListRsp stRsp);
+
+		/*
+        ** 功能简介：获取股票对应的AH股票行情
+        */
+        int stockAH(HStockAHReq stReq, out HStockAHRsp stRsp);
+
+        /*
+        ** 功能简介：获取股票对应的AH股票行情
+        */
+        int stockAHBatch(HStockAHReq stReq, out HStockAHBatchRsp stRsp);
+
+		/*
+        ** 功能简介：获取个股的DDZ数据
+        ** 原协议代码：4419
+        */
+        int stockDDZ(HStockDDZReq stReq, out HStockDDZRsp stRsp);
+
+		/*
+        ** 功能简介：获取港股经纪人队列
+        */
+        int brokerQueue(HBrokerQueueReq stReq, out HBrokerQueueRsp stRsp);
+
+		/*
+        ** 功能简介：获取市场交易状态
+        */
+        int regStatus(HRegStatusReq stReq, out HRegStatusRsp stRsp);
+
+		/*
+        ** 功能简介：上报客户端信息，目前只有SDK版本号
+        */
+        int setCltInfo(HCltInfoReq stReq, out HCltInfoRsp stRsp);
+
+		/*
+        ** 功能简介：获取新股上市表现数据
+        */
+        int getNewStockPerform(HNewStockPerformReq stReq, out HNewStockPerformRsp stRsp);
+        
+        /*
+        ** 功能简介：获取新股上市表现数据(同上，按请求股票返回结果)
+        */
+        int getNewStockPerformByStock(HNewStockPerformByStockReq stReq, out HNewStockPerformRsp stRsp);
+
+        /*
+        ** 功能简介：区间统计
+        */
+        int rangeStats(HRangeStatsReq stReq, out HRangeStatsRsp stRsp);
+
+        //////////////////////////////行情接口:end///////////////////////////////////		 
+		
+		
+
+        ///////////////////////////////分类行情查询：begin////////////////////////////
+        //分类行情对于PC和手机的模式不一样
+        //(1) pc需要推送，但对排序不关心
+        //(2) 移动端需要排序，而不需要行情数据，移动端的行情请通过组合行情查询
+        
+        /*
+        * 功能简介：获取热点板块行情数据        
+        * 原协议代码：4201
+        */      
+        int hotPlateHq(HHotPlateReq stReq, out HHotPlateRsp stRsp);
+        
+		/*
+		* 功能简介：根据类型获取股票列表/板块列表
+		* 例如：行业类型包含：石油、煤炭、钢铁等板块
+		* 例如：中小股包含：002001（新和成）、002002（鸿达兴业）等
+		* 原Ads协议代码：参数1：市场 ；参数2：类型
+		*      （1）内盘5021
+		*      （2）外盘5028 
+		*/
+		int type2Stock(HType2StockReq stReq, out HType2StockRsp stRsp);
+		int typeList(HType2StockReq stReq, out HType2StockRsp stRsp);
+        int typeListSimple(HTypeListSimpleReq stReq, out HType2StockSimpleRsp stRsp);
+
+		/*
+		* 功能：同上
+		* 参数更简单，只传一个type，无需传递市场，方便业务调用
+		*/
+		int type2StockSimple(HType2StockSimpleReq stReq, out HType2StockRsp stRsp);
+		int busList(HType2StockSimpleReq stReq, out HType2StockRsp stRsp);
+        int busListSimple(HBusListSimpleReq stReq, out HType2StockSimpleRsp stRsp);
+
+		/**
+		* 板块成分股 
+		* 模式1：普通code（6位）,例如880001（农林牧渔），包含603336、600438等   [ 原Ads协议代码：5022 ]
+		* 模式2：blockId（10位），例如5004230002（港股通），包含中国铝业等 [ 原Ads协议代码：5029 ]
+		* 
+		*/
+		int block2Stock(HBlock2StockReq stReq, out HBlock2StockRsp stRsp);
+		int blockList(HBlock2StockReq stReq, out HBlock2StockRsp stRsp);
+        int blockListSimple(HBlock2StockSimpleReq stReq, out HBlock2StockSimpleRsp stRsp);
+        int blockTsLevel(HTsBlockLevelReq stReq, out HTsBlockLevelRsp stRsp);
+
+        /*
+		* 功能简介：根据自定义类型获取股票列表/板块列表，目前不支持排序，只返回行情列表
+		* 例如：类型期货连续合约，包含中金所、大商所，郑商所、上期所的连续合约
+		*/
+        int customType2Stock(HCustomType2StockReq stReq, out HType2StockRsp stRsp);
+
+        /**
+        * 对列表进行排序，返回股票顺序
+        */
+        int sortList(HSortListReq stReq, out HSortListRsp stRsp);
+
+		/**
+		* 股票所属的板块列表 
+		* 例如：万科A属于房地产（880046）、广东省（881019）等
+		* 原Ads协议代码：5023
+		*/
+		int stock2Block(HStock2BlockReq stReq, out HStock2BlockRsp stRsp);
+
+		/**
+		* 查询深沪市场多只股票所属的简单行情+所属行业板块 
+		*/
+		int stock2Industry(HStock2IndustryReq stReq, out HStock2IndustryRsp stRsp);
+		
+		/*
+		*************************************** TODOOOOOOOOOOOOOO
+		* 以下为push接口
+		* push接口针对pc端，并不关心数据排序，但需要对返回数据的字段进行定制
+		***************************************
+		*/
+
+		/*
+		* 原Ads协议代码：5200
+		* 功能简介：最近交易时间push
+		*/
+		int regCPTMin(HRegCPTMinReq stReq, out HRegCPTMinRsp stRsp);
+		
+		/*
+		* 原Ads协议代码：6006
+		* 功能简介：注册初始化市场push
+		*/
+		int regMarketInit(HRegMarketInitReq stReq, out HRegMarketInitRsp stRsp);
+		
+		/*
+		* 原Ads协议代码：6001
+		* 功能简介：注册市场码表
+		*/
+		int regCodes(HRegCodesReq stReq, out HRegCodesRsp stRsp);
+		
+		/*
+		* 原Ads协议代码：5015
+		* 功能简介：注册level2委托单队列
+		*/
+		int orderQueue(HOrderQueueReq stReq, out HOrderQueueRsp stRsp);
+		
+		/*
+		* 原Ads协议代码：5016
+		* 功能简介：注册level2逐笔交易
+		*/
+		int transData(HTransDataReq stReq, out HTransDataRsp stRsp);
+		
+		/*
+		* 原Ads协议代码：5017
+		* 功能简介：注册level2委托单信息
+		*/
+		int orderRec(HOrderRecReq stReq, out HOrderRecRsp stRsp);
+		
+		/*
+		* 原Ads协议代码：5018
+		* 功能简介：注册level2价格委托,千档行情 基于逐笔委托，目前只有深圳才有
+		*/
+		int priceOrder(HPriceOrderReq stReq, out HPriceOrderRsp stRsp);
+
+        /*
+        * 功能：注册天眼雷达行情列表数据，发生异动或者行情数据变化都会导致推送
+        */
+        int radarQt(HRadarQtReq stReq, out HRadarQtRsp stRsp);
+
+        /*
+        * 功能：注册天眼雷达异动列表数据，只有发生异动时会推送
+        */
+        int radarChg(HRadarChgReq stReq, out HRadarChgRsp stRsp);
+		
+		/*
+		* 原Ads协议代码：5019
+		* 功能简介：注册level2价格委托队列的委托变化
+		*/
+		int priceAmount(HPriceAmountReq stReq, out HPriceAmountRsp stRsp);
+
+        
+        /**
+        * 功能简介：A股实时盘口，速度会快于交易所官方的十档盘口，默认20档
+        *
+        */
+        int orderbook(HOrderBookReq stReq, out HOrderBookRsp stRsp);
+        
+		/*
+		* 功能：获取委托单类别（压单、托单、夹单、跳价出货单、对倒单）的行情数据，支持push
+		*/
+		int orderClassify(HOrderClassifyReq stReq, out HOrderClassifyRsp stRsp);
+
+		/*
+        ** 功能简介：获取股票十档买卖行情后五档中最大量的一档数据的信息,不进行权限效验
+        */
+        int l2PankouRadio(HPankouRadioReq stReq, out HPankouRadioRsp stRsp);
+
+
+
+		///////////////////////////////分类行情：end////////////////////////////
+		
+		/*
+		* 功能：L2综合屏
+		*/
+		int L2Synt(HSyntReq stReq, out HSyntRsp stRsp);
+
+		/*
+        ** 功能简介：获取港股权证数据
+        */
+        int hkWarrant(HHkWarrantReq stReq, out HHkWarrantRsp stRsp);
+
+		/**
+        *客户端测速使用，获取当前代理连接的用户数
+        */
+        int serverInfo(HServerInfoReq stReq, out HServerInfoRsp stRsp);
+
+		/**
+		* L1用户权限效验请求，区分机构pc,只适用用L1用户权限效验
+		*/
+		int checkUserPermission(HUserPermissionReq stReq, out HUserPermissionRsp stRsp);
+		
+		/*
+        ** 功能简介：获取权证所属港股数据
+        */
+        int warrantHk(HWarrantHkReq stReq, out HWarrantHkRsp stRsp);
+
+		/*
+		* 功能简介：level2量价分布
+		*/
+		int volPrice(HVolPriceReq stReq, out HVolPriceRsp stRsp);
+
+		/*
+		* 功能简介：沪市股票L2千档透视 基于买卖十档（委托） 只有十档，不准
+		*/
+		int allOrderPersp(HAllOrderPerspReq stReq, out HAllOrderPerspRsp stRsp);
+
+        /*
+		* 功能简介：获取主站的监控数据
+		*/
+        int getMonitorInfo(GetMonitorInfoReq stReq, out GetMonitorInfoRsp stRsp);
+
+
+        /*
+		* 功能简介：获取交易日历
+        * 目前支持沪深市场，港股市场，港股通市场，当前日期前后1年（总共2年）的交易日历
+		*/
+        int getMarketTradeCale(GetMarketTradeCaleReq stReq, out GetMarketTradeCaleRsp stRsp);
+
+        /*
+		* 功能简介：获取主站监控数据扩展板 添加系统跟进程 cpu，内存,磁盘 信息
+		*/
+        int getSysMonitorInfo(HSysMonitorReq stReq, out HSysMonitorRsp stRsp);
+
+        /*
+		* 功能简介：监控服务用来获取主站保存在线人数的guid
+		*/
+        int getGuidSet(HGetGuidReq stReq, out HGetGuidRsp stRsp);
+
+        /*
+        * 功能简介：获取主站SN信息
+        */
+        int getSNInfo(HGetSNInfoReq stReq, out HGetSNInfoRsp stRsp);
+
+        /*
+        * 根据日期 获取港股通最新权息信息 （鉴于需求跟内存考虑，目前每个港股通股票只会有最新一天的权息数据，之前的不会缓存）
+        */
+        int getGGTQXData(HGGTQXReq stReq,out HGGTQXRsp stRsp);
+        
+        /*
+        * 根据日期 获取港股通最新结算汇率，只会缓存最新10天的数据
+        */
+        int getGGTRate(HGGTRateReq stReq,out HGGTRateRsp stRsp);
+
+        /*
+        * 获取邀约（目前只支持新三板）
+        */
+        int getYYData(HYYDataReq stReq,out HYYDataRsp stRsp);
+
+
+        /*
+        * 获取发行（目前只支持新三板）
+        */
+        int getFXData(HFXDataReq stReq,out HFXDataRsp stRsp);
+
+
+        /*
+        * 获取南向资金流
+        */
+        int getSouthMoneyFlow(GetSouthMoneyFlowReq stReq, out GetSouthMoneyFlowRsp stRsp);
+
+        // 期货名字列表
+        int getFutureNameList(HFutureNameListReq stReq,out HFutureNameListRsp stRsp);
+
+        //集合竞价分时
+        int getRtminAuction(HRtminAuctionReq stReq, out HRtminAuctionRsp stRsp);
+
+        //南北向资金数据
+        int getSNFundsData(HSNFundDataReq stReq, out HSNFundDataRsp stRsp);
+
+        //南北向净买(流)入数据
+        int getSNNetData(HSNNetDataReq stReq, out HSNNetDataRsp stRsp);
+
+        //南北向历史净买(流)入数据
+        int getHisSNNetData(HHisSNNetDataReq stReq, out HHisSNNetDataRsp stRsp);
+
+        //键盘精灵
+        int jpjl(HJPJLReq stReq, out HJPJLRsp stRsp);
+        
+        //股票排序
+        int stockRank(HStockRankReq stReq, out HStockRankRsp stRsp);
+
+        //复权因子
+        int getXrdFactor(HXrdFactorReq stReq, out HXrdFactorRsp stRsp);
+
+        //获取指定市场的休市提示信息
+        // int getMarketCloseInfo(HMarketCloseInfoReq stReq, out HMarketCloseInfoRsp stRsp);
+
+        //涨跌分布数据
+        int getZDFenBu(HZDFenbuReq stReq, out HZDFenbuRsp stRsp);
+
+        //获取交易状态名称映射表
+        int getTradeStatusName(HTradeStatusNameReq stReq, out HTradeStatusNameRsp stRsp);
+
+        //获取外汇市场里的货币代码与货币名称信息
+        //int getCurrencyInfo(HCurrencyInfoReq stReq, out HCurrencyInfoRsp stRsp);
+	};
+
+};

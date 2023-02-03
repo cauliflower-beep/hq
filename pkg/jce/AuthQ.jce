@@ -1,0 +1,25 @@
+#include "Common.jce"
+#include "BasicData.jce"
+
+module HQSys
+{        
+    struct HLoginUserList
+    {
+        1 optional string sServerName;
+        2 optional string sServerAddr;
+        3 optional vector<HLoginInfo> vUser;
+    };
+    interface AuthQ
+    {
+        
+        /**
+        * 获取所有登录用户
+        */
+        int getAllLoginUser(out HLoginUserList stRsp);   
+            
+        /**
+         *仅供AuthSvr通知proxy踢人使用，不对外
+         */
+        int kickUser(HKickOutInfo stReq);
+     };
+};

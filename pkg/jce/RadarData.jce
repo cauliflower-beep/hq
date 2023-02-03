@@ -1,0 +1,119 @@
+module RadarData
+{
+	enum E_STARS_LEVEL
+	{
+		E_STARS_NONE = 0,
+		E_STARS_LEVEL1 = 1,
+		E_STARS_LEVEL2 = 2,
+		E_STARS_LEVEL3 = 3,
+		E_STARS_LEVEL4 = 4,
+	};
+	
+	enum E_STRENGTH_CHANGE
+	{
+		NO_CHANGE = 1,
+		UP_CHANGE = 2,
+		DOWN_CHANGE = 3,
+	};
+
+    struct Temperature
+	{
+		0 optional int 		       iMarket;           //市场
+		1 optional string          sCode;             //代码
+		2 optional int             iUpdateTime;       //最后更新时间
+		3 optional double          dblStrength;	      //强度
+		4 optional long            lStrengthBuy;      //拉升量
+		5 optional long            lStrengthSell;     //出货量
+		6 optional double          dblLatent;
+		7 optional long            lLatentBuy;
+		8 optional long            lLatentSell;
+	};
+	
+	struct RadarQt
+	{
+		1 optional int iStockID;				//股票id，客户端不用关注
+		2 optional int iTime;					//时间
+		3 optional double dblStrength;			//强度，强度为正时是拉升，强度为负时是出货
+		4 optional E_STARS_LEVEL eStarsLevel;	//星级
+		5 optional long  lStrengthBuy;			//拉升量
+		6 optional long  lStrengthSell;			//出货量
+		7 optional E_STRENGTH_CHANGE eChgFlag;	//强度变化
+		8 optional double dNowPrice;			//现价
+		9 optional double dPrevPrice;			//昨收
+	};
+
+	enum E_RADAR_TYPE
+	{
+		E_RADAR_BUY = 1,		//拉升
+		E_RADAR_SELL = 2,		//出货
+	};
+	
+	struct RadarChg
+	{
+		1 optional int iStockID;				//股票id，客户端不用关注
+		2 optional int iTime;					//时间
+		3 optional E_RADAR_TYPE eType;			//拉升、出货每句
+		4 optional E_STARS_LEVEL eStarsLevel;	//星级
+		5 optional long  lStrengthBuy;			//拉升金额
+		6 optional long  lStrengthSell;			//出货金额
+		7 optional E_STRENGTH_CHANGE eChgFlag;	//强度变化
+		8 optional double dNowPrice;			//现价
+		9 optional double dPrevPrice;			//昨收
+	};
+
+	struct RadarQtList
+	{
+		1 optional vector<RadarQt> vRadarQt;
+	};
+	
+	struct RadarRtMin
+	{
+		1 optional unsigned int     uiStockID;
+		2 optional unsigned int		iTime;
+		3 optional double			dblRtStrength;
+		4 optional long				lRtStrengthBuy;
+		5 optional long				lRtStrengthSell;
+	};
+	
+	//单个股票的多个分时数据
+	struct RadarRtMinList
+	{			
+		1 optional bool					bClear;
+		2 optional unsigned int			uiStockID;
+		3 optional vector<RadarRtMin>	vData;
+	};
+	
+	//多个股票的分时数据
+	struct RadarRtMinBatchList
+	{
+		1 optional vector<RadarRtMinList> vStock;
+	};
+	
+	
+	struct TempList
+	{
+		0 optional int 		       iDate;            //日期
+		1 optional int 		       iFlag;            //0表示增量，1表示全量
+		2 optional vector<Temperature> vtTemperature;//强度数据
+	};
+	
+	//跳价单
+	struct JumpOrder
+	{
+		0 optional int		iMarket;
+		1 optional string	sCode;
+		2 optional int		iOrdertime;
+		3 optional double	dOrderPrice;
+		4 optional double	dCurPrice;
+		5 optional int		iBuyOrderVol;
+		6 optional int		iSellOrderVol;
+		7 optional double	dBuyTransAmt;
+		8 optional double	dSellTransAmt;	
+	};
+	
+	struct JumpOrderList
+	{
+		1 optional vector<JumpOrder> vJump;
+		2 optional bool				 bReset=false;		//是否重置
+	};
+};

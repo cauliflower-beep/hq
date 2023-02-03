@@ -1,0 +1,624 @@
+#include "CommonData.jce"
+#include "AdsData.jce"
+
+module HQSys
+{
+    enum E_DataCenter_Ret
+    {
+        EDR_OK = 0,
+        EDR_INVALID_PARAM = -1,
+        EDR_SERVER_FAIL = -2,
+        EDR_DATA_DAMAGE = -3, 
+        EDR_NO_DATA=-6,
+        EDR_UNKNOWN = -99,
+    };
+    
+    //////////基础数据////////
+    struct StockBaseInfo
+    {
+        1 require short shtMarket;
+        2 require string sCode;
+        3 require int  iDate;
+        4 optional int iMode = 0;       // 上报模式，0：全量+缓存；1：全量；2：缓存，目前只有分钟k，分钟资金流和分时有用
+    };
+        
+
+    struct ReloadDayKlineReq
+    {
+        0 require StockBaseInfo stBaseInfo;
+        1 optional vector<HStockUnique> vStock;
+    };
+
+    struct JAnalyDataWrap
+    {
+        0 optional vector<JAnalyData> vData;
+    };
+
+    struct JSMoneyFlowWrap
+    {
+        0 optional vector<JSMoneyFlow> vData;
+    };
+
+    struct RtminDataWrap
+    {
+        0 optional vector<JRTMinData> vData;
+    };
+
+    struct TickDataWrap
+    {
+        0 optional vector<JTickData> vData;
+    };
+
+    struct Type2StatusWrap
+    {
+        0 optional map<int, int> mStatus;
+    };
+    
+    ////////////上报接口相关结构体////////////
+    enum E_DATA_STATUS
+    {
+        DATA_SAVING =0,
+        DATA_SAVED = 1,
+    };
+    struct ReportStatusReq
+    {
+        1 require short shtMarket;
+        2 require int iDate;
+        3 require int iType; //数据类型
+        4 require E_DATA_STATUS eCurStatus;
+        
+        /*
+         * 强制上报，此时如果状态是SAVED，依然可以上报
+         * 场景是：上次上报成功后，又有数据更新（本地通过md5来判断）
+         * 默认不采取强制上报模式
+         */
+        5 optional bool bForce = false;
+    };
+    
+    struct ReportStatusRsp
+    {
+        1 optional bool bAllowReport;        
+        2 optional E_DATA_STATUS eStatus;
+    };
+    
+    struct GetReportStatusReq
+    {
+        1 require short shtMarket;
+        2 require int iDate;
+    };    
+    
+    struct GetReportStatusRsp
+    {
+        1 require string sClientIp;
+        2 require int iLockTime;
+        3 optional map<int, E_DATA_STATUS> mStatus;
+    };
+    
+    struct BatchGetReportStatusReq
+    {
+        1 require vector<GetReportStatusReq> vMultiReq;
+    };    
+    
+    struct OneReportStatus
+    {
+        1 require short shtMarket;
+        2 require int iDate;
+        3 optional GetReportStatusRsp stValue;
+    };
+    
+    struct BatchGetReportStatusRsp
+    {
+        1 optional vector<OneReportStatus> vMultiData;
+    };
+    
+    //批量设置状态    
+    struct SetReportStatusReq
+    {
+        1 require short shtMarket;
+        2 require int iDate;
+        3 require map<int, E_DATA_STATUS> mStatus;
+    };
+    
+    struct SetReportStatusRsp
+    {
+        1 optional map<int, E_DATA_STATUS> mStatus;
+    };
+    
+    
+    struct ReportDayKlineReq
+    {
+        1 require StockBaseInfo stBaseInfo;
+        2 require JAnalyData stData;
+    }; 
+    
+    
+    struct BatchReportDayKlineReq
+    {
+        //必须批量同一年的数据，否则拒绝，baseinfo中的date填year即可
+        1 require StockBaseInfo stBaseInfo;
+        2 optional vector<JAnalyData> vData;
+    };
+
+    struct ReportDayMoneyFlowReq
+    {
+        1 require StockBaseInfo stBaseInfo;
+        2 require JSMoneyFlow stMoney;
+        3 optional bool bActive = false;    //废弃
+        4 optional short nMfType = 11; // 日级别资金流类型，默认为旧的双向资金流HDT_DAY_MONEYFLOW（11），目前还支持主被动资金流HDT_DAY_ACTIVE_MONEYFLOW 12，新双向资金流HDT_DAY_DOUBLE_MONEYFLOW（40）
+    };
+    
+    struct BatchReportDayMoneyFlowReq
+    {
+        //必须批量同一年的数据，否则拒绝，baseinfo中的date填year即可
+        1 require StockBaseInfo stBaseInfo;
+        2 optional vector<JSMoneyFlow> vData;
+        3 optional bool bActive = false;    //废弃
+        4 optional short nMfType = 11; // 日级别资金流类型，默认为旧的双向资金流HDT_DAY_MONEYFLOW（11），目前还支持主被动资金流HDT_DAY_ACTIVE_MONEYFLOW 12，新双向资金流HDT_DAY_DOUBLE_MONEYFLOW（40）
+    };
+    
+    struct ReportMinKlineReq
+    {
+        1 require StockBaseInfo stBaseInfo;
+        2 require vector<JAnalyData> vData;
+        3 require int iPeriod;          // 周期，1、5、15、30、60    
+    };
+    
+    struct ReportMinMoneyFlowReq
+    {
+        1 require StockBaseInfo stBaseInfo;
+        2 require vector<JSMoneyFlow> vMoney;
+        3 require int iPeriod;
+        4 optional bool bActive = false;    //废弃
+        5 optional short nMfType = -1;      //资金流类型 <0 表示不生效,还是走之前iPeriod逻辑，>=0 走新逻辑
+    };
+    
+    
+    struct ReportRTMinReq
+    {
+        1 require StockBaseInfo stBaseInfo;
+        2 require vector<JRTMinData> vRtMin;        //分时曲线
+        3 require float fPreClose;                //前收
+        4 optional int   iDateExt;                // 扩展日期 外盘会有跨天的情况存在
+        5 optional int   iDateExt2;               // 扩展日期2 外盘会有跨3天的情况存在
+    };
+    
+    struct ReportTickReq
+    {
+        1 require StockBaseInfo stBaseInfo;
+        2 require vector<JTickData> vTick;        //分时曲线
+        3 require float fPreClose;                //前收
+    };
+
+    
+    struct ReportIndexReq
+    {
+        1 require StockBaseInfo stBaseInfo;
+        2 require short  shtDataType;              // 数据类型
+        3 require short  shtPeriod;                // 周期，分钟级别1，5，15，30，60，120；日级为0
+        4 require int    iNum;                     // 元素数量
+        5 require string sData;                    // 序列化的数据
+    };
+    
+    //////////////查询接口相关结构体/////////////
+    struct GetDayKlineReq
+    {
+        1 require short shtMarket;
+        2 require string sCode;
+        3 optional int iYear;
+    };
+    
+    struct GetDayKlineRsp
+    {
+        1 optional vector<JAnalyData> vData;
+    };
+    
+    //读全量数据
+    struct LoadDayKlineReq
+    {
+        1 require short shtMarket;
+        2 require string sCode;
+    };
+    
+    struct LoadDayKlineRsp
+    {
+        1 optional vector<JAnalyData> vData;
+    };
+    
+    struct GetDayKlineByDayReq
+    {
+        1 require short shtMarket;
+        2 require string sCode;
+        3 optional int iDate;
+    };
+    
+    struct GetDayKlineByDayRsp
+    {
+        1 optional JAnalyData stData;
+    };
+    
+    
+    
+    struct GetDayMFReq
+    {
+        1 require short shtMarket;
+        2 require string sCode;
+        3 optional int iYear;
+        4 optional bool bActive = false;    //废弃
+        5 optional short nMfType = 11; // 日级别资金流类型
+    };
+    
+    struct GetDayMFRsp
+    {
+        1 optional vector<JSMoneyFlow> vMoney;
+    };
+    
+        
+    //请求全量    
+    struct LoadDayMFReq
+    {
+        1 require short shtMarket;
+        2 require string sCode;
+        3 optional bool bActive = false;    //废弃字段
+        4 optional short nMfType = 11; // 日级别资金流类型，默认为旧的双向资金流HDT_DAY_MONEYFLOW（11），目前还支持主被动资金流HDT_DAY_ACTIVE_MONEYFLOW 12，新双向资金流HDT_DAY_DOUBLE_MONEYFLOW（40）
+    };
+    
+    struct LoadDayMFRsp
+    {
+        1 optional vector<JSMoneyFlow> vMoney;        
+    };
+    
+    struct GetDayMFByDayReq
+    {
+        1 require short shtMarket;
+        2 require string sCode;
+        3 optional int iDate;        
+        4 optional bool bActive = false;    //废弃
+        5 optional short nMfType = 11; // 日级别资金流类型
+    };
+    
+    struct GetDayMFByDayRsp
+    {
+        1 optional JSMoneyFlow stMoney;
+    };
+    
+    
+    struct GetMinKlineReq
+    {
+        1 require short shtMarket;
+        2 require string sCode;
+        3 optional int iPeriod = 1;//周期：1,5,15,30,60
+        4 optional int iStartDate; //开始日期, 默认今天，查询结果不含iStartDate交易周期的数据
+        5 optional int iReqNum;    //需要的条数，最好不好超过1千条
+        6 optional bool bRetDate = false;  //是否填充iDate字段
+    };
+    
+    struct GetMinKlineDateReq
+    {
+        1 require short shtMarket;
+        2 require string sCode;
+        3 optional int iPeriod = 1;       // 周期：1,5,15,30,60
+        4 optional int iDate;             // 只查询指定日期的数据
+        5 optional bool bAll = false;     // 是否查询指定日期的整个交易周期的数据，对于跨天交易的市场有用，false：只返回分钟数据中日期等于iDate的数据；true：返回所有数据
+    };
+    
+    struct GetMinKlineRsp
+    {
+        1 optional vector<JAnalyData> vData;
+    };
+    
+    struct GetMinMoneyFlowReq
+    {
+        1 require short shtMarket;
+        2 require string sCode;
+        3 optional int iPeriod = 1;//周期：1,5,15,30,60
+        4 optional int iStartDate; //开始日期, 默认今天
+        5 optional int iReqNum;    //需要的条数，最好不好超过1千条
+        6 optional bool bActive = false;    //废弃
+        7 optional short nMfType = -1;      //资金流类型 <0 表示不生效,还是走之前iPeriod逻辑，>=0 走新逻辑
+    };
+    
+    struct GetMinMoneyFlowRsp
+    {
+        1 optional vector<JSMoneyFlow> vMinData;
+    };
+    
+    struct GetMinMoneyFlowDateReq
+    {
+        1 require short shtMarket;
+        2 require string sCode;
+        3 optional int iPeriod = 1;       // 周期：1,5,15,30,60
+        4 optional int iDate;             // 日期
+        5 optional bool bActive = false;  // 废弃字段
+        6 optional bool bAll = false;     // 是否查询指定日期的整个交易周期的数据，对于跨天交易的市场有用，false：只返回分钟数据中日期等于iDate的数据；true：返回所有数据
+        7 optional short nMfType = -1;      //资金流类型 <0 表示不生效,还是走之前iPeriod逻辑，>=0 走新逻辑
+    };
+    
+    struct GetMinMoneyFlowDateRsp
+    {
+        1 optional vector<JSMoneyFlow> vMinData;
+    };
+    
+    struct GetRtMinReq
+    {
+        1 require short shtMarket;
+        2 require string sCode;
+        3 optional int iDate; 
+    };
+    
+    struct GetRtMinRsp
+    {
+        1 require float fPreClose;                //前收
+        2 require vector<JRTMinData> vRtMin;        //分时曲线
+        3 optional int   iDateExt;                // 扩展日期 外盘会有跨天的情况存在
+        4 optional int   iDateExt2;               // 扩展日期 外盘会有跨3天的情况存在
+    };
+    
+    struct GetTickReq
+    {
+        1 require short shtMarket;
+        2 require string sCode;
+        3 optional int iDate; 
+    };
+
+    
+    // 指标数据
+    struct GetIndexReq
+    {
+        1 require short shtMarket;
+        2 require string sCode;
+        3 require short  shtType;           // 类型
+        4 optional short shtPeriod = 0;     // 周期，0：日级别；N：N分钟级别
+        5 optional int iFromDate = 0;       // 格式：YYYYMMDD，从此日期开始向前查询数据，为0表示从最新开始
+        6 optional int iEndDate = 0;        // 结束时间，格式：YYYYMMDD
+        7 optional int iNum = 0;            // 数据条数，如果非0，那么以iFromDate+iNum查询
+    };
+
+    struct GetIndexItem
+    {
+        0 optional int iDate;           // 日期
+        1 optional int iNum;            // 数目
+        2 optional string sData;        // 序列化的数据
+    };
+
+    struct GetIndexRsp
+    {
+        1 optional vector<GetIndexItem> vData;
+    };
+
+    struct GetTickRsp
+    {
+        1 require float fPreClose;                //前收
+        2 require vector<JTickData> vTick;
+    };
+    
+    struct ClearMinkReq
+    {
+        1 require StockBaseInfo stBaseInfo;
+        2 require int iPeriod;          //周期，1、5、15,30,60
+        3 require string sPassword;     //对不起,这个接口不是你想调用就调用的
+    };
+   
+    struct BatchRemoveDayKReq
+    {
+        1 require StockBaseInfo stBaseInfo;
+        2 optional vector<int> vDates;         //删除的日期，忽略stBaseInfo中iDate YYYYMMDD
+        3 optional string sPassword;
+		4 optional vector<int> vHintsYear;     //删除错误数据时候的年， 如2016年数据存到2017年,  vHints 存2017
+    };
+	
+	struct BatchRemoveDayMoneyFlowReq
+	{
+		1 require StockBaseInfo stBaseInfo;
+        2 optional vector<int> vDates;         //删除的日期，忽略stBaseInfo中iDate YYYYMMDD
+        3 optional string sPassword;
+		4 optional vector<int> vHintsYear;      //删除错误数据时候的年， 如2016年数据存到2017年,  vHints 存2017
+		5 optional bool bActive = false;        //是否为主动资金流，默认为双向资金流 废弃
+        6 optional short nMfType = 11;          // 日级别资金流类型，默认为旧的双向资金流HDT_DAY_MONEYFLOW（11），目前还支持主被动资金流HDT_DAY_ACTIVE_MONEYFLOW 12，新双向资金流HDT_DAY_DOUBLE_MONEYFLOW（40）
+	};
+	
+	struct BatchRemoveMinKByDate
+	{
+		1 require StockBaseInfo stBaseInfo;
+		2 optional bool bRemoveAll=false; 
+        3 optional vector<int> vTimes;         //0点以来分钟数   要删除该天哪些时间的数据，stBaseInfo中iDate为具体日期, 如果bRemoveAll为True忽略该字段           
+        4 optional int iPeriod;                //周期
+        5 optional string sPassword;
+	};
+	
+	struct BatchRemoveMinFlowByDate
+	{
+		1 require StockBaseInfo stBaseInfo;
+		2 optional bool bRemoveAll=false; 
+        3 optional vector<int> vTimes;         //0点以来分钟数    要删除该天哪些时间的数据，stBaseInfo中iDate为具体日期, 如果bRemoveAll为True忽略该字段           
+        4 optional int iPeriod;                //周期
+        5 optional string sPassword;
+        6 optional bool bActive = false;    //是否为主动资金流，默认为双向资金流  废弃
+        7 optional short nMfType = -1;      //资金流类型 <0 表示不生效,还是走之前iPeriod逻辑，>=0 走新逻辑
+	};
+
+    struct DelMultiDayDataReq
+	{
+        0 require short      shtMarket;
+        1 require string     sCode;
+        2 require int        iType;                   // 类型，对应HISTORY_DATA_TYPE，增加了类型92: HDT_INDEX指标
+        3 require int        iFrom;
+        4 require int        iTo;
+        5 optional int       iSubType = -1;           // 自定义类型的子类型才需要填，例如：指标INDEX，其他标准类型不能填
+        6 optional int       iPeriod = -1;            // 自定义类型的周期才需要填，例如：指标INDEX，其他标准类型不能填
+        7 optional string    sPassword;
+    };
+
+    struct CompactReq
+    {
+        0 require short      shtMarket;
+        1 require int        iType;                   // 类型，对应HISTORY_DATA_TYPE，增加了类型92: HDT_INDEX指标
+        2 optional int       iSubType = -1;           // 自定义类型的子类型才需要填，例如：指标INDEX，其他标准类型不能填
+        3 optional int       iPeriod = -1;            // 自定义类型的周期才需要填，例如：指标INDEX，其他标准类型不能填
+    };
+    
+    struct DateLimit
+    {
+        0 optional int iStartDate;
+        1 optional int iEndDate;
+    };
+
+    struct GetStockDataReq
+    {
+        0 optional short shtMarket;
+        1 optional string sCode;
+        2 optional DateLimit date;
+        3 optional vector<short> vType; //类型(日K,分钟K...)空表示所有数据
+        4 optional short shtComp = 0;//是否压缩(0:不压缩 1:压缩)
+    };
+
+    struct StockHistoryData
+    {
+        0 optional vector<JAnalyData> vDayKline; //日K
+        1 optional map<short, map<int, vector<JAnalyData>>> mapMinKline; //类型->日期->分钟K
+        2 optional map<short, vector<JSMoneyFlow>> mapDayMFlow; //类型->日资金
+        3 optional map<short, map<int, vector<JSMoneyFlow>>> mapMinMFlow; //类型->日期->分钟资金
+        4 optional map<int, GetRtMinRsp> mapRtmin; //日期->分时
+        5 optional map<int, GetTickRsp> mapTick; //日期->TICK
+    };
+
+    struct GetStockDataRsp
+    {
+        0 optional StockHistoryData data;//JCE结构(不压缩时有效)
+        1 optional vector<byte> vBuffer; //StockHistoryData序列化后的ZIP压缩的数据(开启压缩有效)
+    };
+
+    interface DataCenter
+    {
+        //上报是否可上传状态
+        int reportStatus(ReportStatusReq stReq, out ReportStatusRsp stRsp);        
+        //获取上报状态
+        int getReportStatus(GetReportStatusReq stReq, out GetReportStatusRsp stRsp);
+        //获取所有市场状态
+        int batchGetReportStatus(BatchGetReportStatusReq stReq, out BatchGetReportStatusRsp stRsp);
+        
+        //修改reportStatus，给管理系统使用
+        int setReportStatus(SetReportStatusReq stReq, out SetReportStatusRsp stRsp);
+        
+        
+        
+        //上报日K数据 ，可以部分上报，进行合并   
+        int reportDayKline(ReportDayKlineReq stReq);
+        //批量上报日K
+        int batchReportDayKline(BatchReportDayKlineReq stReq);
+        
+
+        //上报日资金流，可以部分上报，进行合并
+        int reportDayMoneyFlow(ReportDayMoneyFlowReq stReq);
+        //批量上报日资金
+        int batchReportDayMoneyFlow(BatchReportDayMoneyFlowReq stReq);
+        
+        //上报分钟k线，可以部分上报，进行合并
+        int reportMinKline(ReportMinKlineReq stReq);
+        
+        //上报分钟资金，可以部分上报，进行合并
+        int reportMinMoneyFlow(ReportMinMoneyFlowReq stReq);
+        
+        //上报分时数据，可以部分上报，进行合并
+        int reportRTMin(ReportRTMinReq stReq);
+                
+        
+        /**
+        * 上报分笔数据
+        * 注意：tick数据是直接覆盖
+        * 原因是由于tick中只有分钟，没有序号，无法找到合适的位置插入
+        */
+        int reportTick(ReportTickReq stReq);
+
+        // 上报指标数据
+        int reportIndex(ReportIndexReq stReq);
+        
+        /////////////////////查询接口///////////////////
+        /**
+        * 日相关的数据，基于年请求, 包括日K和日资金流
+        */
+        int getDayKline(GetDayKlineReq stReq, out GetDayKlineRsp stRsp);        
+        int getDayMoneyFlow(GetDayMFReq stReq, out GetDayMFRsp stRsp);
+        
+        int loadDayKline(LoadDayKlineReq stReq, out LoadDayKlineRsp stRsp);
+        int loadDayMoneyFlow(LoadDayMFReq stReq, out LoadDayMFRsp stRsp);
+        
+        int getDayklineByDay(GetDayKlineByDayReq stReq, out GetDayKlineByDayRsp stRsp);
+        int getDayMoneyFlowByDay(GetDayMFByDayReq stReq, out GetDayMFByDayRsp stRsp);
+        
+        /**
+        * 分钟数据：基于天请求，可以请求多天数据
+        */
+        int getMinKline(GetMinKlineReq stReq, out GetMinKlineRsp stRsp);
+        int getMinKlineByDate(GetMinKlineDateReq stReq, out GetMinKlineRsp stRsp);
+        int getMinMoneyFlow(GetMinMoneyFlowReq stReq, out GetMinMoneyFlowRsp stRsp);
+        int getMinMoneyFlowByDate(GetMinMoneyFlowDateReq stReq, out GetMinMoneyFlowDateRsp stRsp);
+        
+        /**
+        * 分时数据，指定某天查询
+        */
+        int getRtMin(GetRtMinReq stReq, out GetRtMinRsp stRsp);
+        
+        /**
+        * tick数据，指定某天查询
+        */
+        int getTick(GetTickReq stReq, out GetTickRsp stRsp);
+
+        /**
+        * 指标数据
+        */
+        int getIndex(GetIndexReq stReq, out GetIndexRsp stRsp);
+
+        //获取个股所有历史数据
+        int getStockHistoryData(GetStockDataReq stReq, out GetStockDataRsp stRsp);
+
+        /**
+        * compact操作
+        */
+        int compact(CompactReq stReq);
+        
+        /**
+        * compact所有数据
+        */
+        int compactAll();
+        
+        /*----------------后台调用----------------*/
+        /**
+        * 仅供后台调用
+        */
+        int clearMinkline(ClearMinkReq stReq);     
+
+        /** 
+        * 批量删除日K数据
+        */  
+        int batchRemoveDayK(BatchRemoveDayKReq stReq);  
+		
+        /** 
+        * 批量删除日资金数据
+        */  		
+        int batchRemoveDayMoneyFlow(BatchRemoveDayMoneyFlowReq stReq);
+        
+        /** 
+        * 批量删除某一天分钟K数据
+        */  		
+        int batchRemoveMinKByDate(BatchRemoveMinKByDate stReq);
+        
+        /** 
+        * 批量删除某一天分钟资金流数据
+        */  		
+        int batchRemoveMinFlowByDate(BatchRemoveMinFlowByDate stReq);
+
+        /** 
+        * 删除多日数据
+        */  	
+        int DelMultiDayData(DelMultiDayDataReq stReq);
+        //主动资金流读写接口
+        int loadIniPasDayMoneyFlow(LoadDayMFReq stReq, out LoadDayMFRsp stRsp);
+        //上报日资金流，可以部分上报，进行合并
+        int reportIniPasDayMoneyFlow(ReportDayMoneyFlowReq stReq);
+        //主被分钟动资金流
+        int getIniPasMinMoneyFlow(GetMinMoneyFlowReq stReq, out GetMinMoneyFlowRsp stRsp);
+        //上报主被动分钟资金，可以部分上报，进行合并
+        int reportIniPasMinMoneyFlow(ReportMinMoneyFlowReq stReq);
+    };
+
+}; 

@@ -1,0 +1,150 @@
+#include "MCvtData.jce"
+#include "CommonData.jce"
+
+
+module MCache
+{
+	struct MCacheFoundFlow
+	{
+		0 optional double d3DayNetInflow = 0.0;     // 3日净流入
+		1 optional double d5DayNetInflow = 0.0;     // 5日净流入
+		2 optional double d10DayNetInflow = 0.0;    // 10日净流入
+		3 optional double d20DayNetInflow = 0.0;    // 20日净流入
+	};
+
+    //缓存数据
+    struct MCacheQuote
+    {
+        0 require unsigned int uiTradeSequence;
+        1 require unsigned int uiDate;          //交易日YYYYMMDD
+        2 optional unsigned int uiTime;         //交易时间 HHMMSS
+        3 optional unsigned int uiMinCount;     //交易时间,凌晨到现在的分钟数
+        4 optional string sUniqId;              //唯一标识
+        5 optional string sName;                //股票名称
+        6 require string sCode;                 //股票代码
+        7 require unsigned short usMarket;      //市场
+        8 optional unsigned short usType;       //类别
+        9 optional byte iTradeFlag;             // 交易标志，0交易中，1已收盘, 参照MQT_Trade_Flag
+        10 optional byte iPriceScale;           //小数位数
+        11 optional short  shtUnit;             //成交量单位
+
+        12 optional unsigned int uiItemNum;
+        13 optional double       fClose;        // 前日收盘价 就是昨收
+        14 optional double       fOpen;         //开盘价
+        15 optional double       fHigh;         //最高价
+        16 optional double       fLow;          //最低价
+        17 optional double       fPrice;        //最新价
+
+        18 optional long    lVolume;            //成交量（单位：手）
+        19 optional double  dAmount;            //成交额
+        20 optional double  lTradeNum;          //成交笔数
+        
+        21 optional vector<double>  vAsk;  //卖价
+        22 optional vector<long>    vAskVol; //卖量
+        23 optional vector<int>    vAskNum; //卖家个数
+        24 optional vector<double>  vBid;   //买价
+        25 optional vector<long>    vBidVol; //买量
+        26 optional vector<int>    vBidNum; //买家个数    
+
+        27 optional long      lWaiPan;  // 外盘
+        28 optional long      lNeiPan;  // 内盘
+        29 optional long      lCurVol;  // 现手
+        30 optional byte      cCurVolDirect;  // 现手方向
+        31 optional long      lCurOI;   // 持仓量变化
+        32 optional double    dAvg; ///均价
+
+        33 optional long      lOpenInterest;    //持仓量
+        34 optional double    dSettlementPrice; ///今结算价
+        35 optional long      lPreOpenInterest; ///昨持仓量
+        36 optional double    dPreSettlementPrice;///昨结算价
+    
+        37 optional double    dPriceZT;     // 涨停价 含税价
+        38 optional double    dPriceDT;     // 跌停价 含税均价
+        39 optional double    dPrevPrice;   //计算涨速的价格
+        40 optional double    dVolBase;     //量比基量
+		41 optional int       iTradeUnit;   //每手股数
+		42 optional double	  dPercent10Day = 0.0;	//10天涨幅
+		43 optional double	  d52WeekMax = 0.0;	//股票在过去52周内交易的最高价
+		44 optional double	  d52WeekMin = 0.0;	//股票在过去52周内交易的最低价
+		45 optional double	  dHistoryMax = 0.0;	//股票从上市以来交易的最高价
+		46 optional double	  dHistoryMin = 0.0;	//股票从上市以来交易的最低价
+		47 optional MCvt::MStdFundFlowUnit dayFlDetail; // 日资金流详细数据
+		48 optional MCacheFoundFlow flSimple;           // 资金流
+		49 optional float     fTurnover=0;              // 换手率  
+		50 optional float     fPeRatio=0;               // 动态市盈率
+		51 optional float     fPriceRatio=0;            // 市净率
+		52 optional double    dZSZ=0;                   // 总市值
+		53 optional double    dLTSZ=0;                  // 流通市值
+		54 optional double    fPeRatioJT=0;             // 静态市盈率
+		55 optional double    fPeRatioTTM=0;            // TTM市盈率
+        56 optional float    fLast = 0.0;               //上一笔行情价格
+        57 optional float    fWeiBi = 0.0;              //委比
+        58 optional float    fLiangBi = 0.0;            //量比
+        59 optional bool     bBlockTrade = false;       //是否可以进行大宗交易
+        60 optional MCvt::MStdHKQuoteExt stHK;          //港股
+        61 optional MCvt::MStdBlkIndexExt stIndex;      //板块指数行情
+        62 optional HQSys::HPeekDeriveData stDeriveExt;        //其他扩展行情 暂时只有期货期权使用
+        63 optional double	  dPercent5Day = 0.0;	//5天涨幅
+        64 optional double	  dPercentMonth = 0.0;	//月涨幅
+        65 optional double	  dPercentSeason = 0.0;	//季涨幅
+        66 optional double	  dPercentYear = 0.0;	//年涨幅
+        67 optional double      dAdrConversionPrice = 0.0; //港股对应的美股ADR换算价
+        68 optional double      dPercent20Day = 0.0;      //20天涨幅
+        69 optional double      dPercent60Day = 0.0;      //60天涨幅
+        70 optional double      dPercent120Day = 0.0;     //120天涨幅
+        71 optional double      dPercent250Day = 0.0;     //250天涨幅
+        72 optional double      dPercentThisYear = 0.0;   //年初以来涨幅
+        73 optional double      dFinancingRatio = 0.0;    //融资比例（天风港股融资比例）
+        74 optional string      sBdUniqId;  //关联代码唯一标识
+        75 optional int iUpNDay = 0;                 // 证券连涨天数或连跌天数
+        76 optional short shtThisYearUpTotalDay = 0; // 今年以来总涨天数
+    };
+    
+    struct MCacheFin
+    {
+        //财务数据字段
+        0 optional float       fActiveCapital;      //流通股本
+        1 optional short       shtAddr;              //所属省份
+        2 optional short       shtHy;                //所属行业
+        3 optional int         iGxrq;              //更新日期
+        4 optional int         iStart;             //上市日期
+        5 optional float       fZgb;               //总股本(万股)
+        6 optional float       fMsgs;              //每手股数(千股)
+        7 optional float       fFqrfrg;            //发起人法人股(千股)
+        8 optional float       fFrg;               //法人股(千股)
+        9 optional float       fDr;                //DR比率
+        10 optional float      fJybz;              //交易币种
+        11 optional float      fZgg;               //职工股(千股)
+        12 optional float      fZzc;               //总资产(千元)
+        13 optional float      fLdzc;              //流动资产(千元)
+        14 optional float      fGdzc;              //固定资产(千元)
+        15 optional float      fWxzc;              //无形资产(千元)
+        16 optional float      fCqtz;              //长期投资(千元)
+        17 optional float      fLdfz;              //流动负债(千元)
+        18 optional float      fCqfz;              //长期负债(千元)
+        19 optional float      fZbgjj;             //资本公积金(千元)
+        20 optional float      fJzc;               //股东权益(就是净资产)(千元)
+        21 optional float      fZysy;              //主营收入(千元)
+        22 optional float      fZyly;              //主营利益(千元)
+        23 optional float      fQtly;              //其它利益(千元)
+        24 optional float      fYyly;              //营业利益(千元)
+        25 optional float      fTzsy;              //投资收益(千元)
+        26 optional float      fBtsy;              //补贴收入(千元)
+        27 optional float      fYywsz;             //营业外收支(元)
+        28 optional float      fSnsytz;            //上年损益调整(元)
+        29 optional float      fLyze;              //利益总额(千元)
+        30 optional float      fShly;              //税后利益(千元)
+        31 optional float      fJly;               //净利益(千元)
+        32 optional float      fWfply;             //未分配利益(千元)
+        33 optional float      fTzmgjz;            //调整每股净资产 物理意义:  净资产/调整后的总股本(元)
+        34 optional float      fHalfYearFlag;      //全部更改为以月为单位
+    };
+    
+
+    //行情+财务的组合数据，用于个股页面详情信息查询
+    struct MQuoteComb
+    {
+        1 require MCacheQuote stQt;
+        2 optional MCacheFin stFin;
+    };
+};

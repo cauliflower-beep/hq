@@ -1,0 +1,107 @@
+module Monitor
+{
+    struct SystemMonitorInfo
+    {
+        0 optional int      memTotal = 0;		        //总内存  单位KB
+        1 optional int      memFree = 0;		        //总free内存
+        2 optional int      memAvailable = 0;           //avalid内存
+        3 optional int      swapTotal = 0;		        //swap总内存
+        4 optional int      swapFree = 0;               //swap Free内存
+        5 optional float 	fCPURate = 0.0;	            //CPU占用率
+    };      
+
+    struct ProcessMonitorInfo       
+    {       
+        0 optional long     nPid = 0;                   //pid
+	    1 optional int      vmPeak = 0;		            //虚拟内存峰值 单位KB
+	    2 optional int      vmSize = 0;		            //虚拟内存大小
+	    3 optional int      vmHWM = 0;			        //物理内存峰值
+	    4 optional int      vmRSS = 0;			        //物理内存大小
+	    5 optional int      threadNum = 0;			    //线程数
+        6 optional float 	fProgressCPURate = 0.0;	    //进程CPU占用率
+        7 optional string   sRunPath;                   //运行路径
+    };
+
+    struct CPULoadAvaInfo
+    {
+        0 optional float f1MinLoadAvg = 0.0;	        //1分钟负载 都是负载/内核数量的值
+        1 optional float f5MinLoadAvg = 0.0;	        //5分钟负载
+        2 optional float f15MinLoadAvg = 0.0;	        //15分钟负载
+        3 optional int   nCPUCoreNum = 0;	            //CPU内核数量
+    };
+
+    //'/'分区磁盘情况
+    struct DiskInfo
+    { 
+        0 optional long lFileType = 0;					//文件属性
+        1 optional string sPermission;					//权限
+        2 optional float disk_total_size = 0;			//总大小 单位M
+        3 optional float disk_free_size = 0;			//剩余大小 单位M
+    }; 
+
+    //外盘转码 上游地址信息
+    struct HMCvtMarketInfo
+    {
+		0 optional short        nMarket;                //市场
+        1 optional int          nFlag;                  //flag
+    };
+
+	struct CvtMonitInfo
+	{
+		0 optional string       strVer;                 //版本
+		1 optional string       strStartTime;           //启动时间
+		2 optional bool         blnListen=false;        //是否启动
+		3 optional string       strUpIp;                //上游连接IP      内盘使用
+		4 optional short        shtUpPort;              //上游连接端口    内盘使用
+		5 optional int	        iUpTradeDate;           //上游交易日期     内盘使用
+		6 optional int          iUpTradeTime;	        //上游交易时间    内盘使用
+		7 optional map<string, DiskInfo>   mapDiskInfo; //磁盘信息
+		8 optional map<string, string>     mapOther;    //扩展信息
+        9 optional SystemMonitorInfo sysInfo;			//机器内存信息
+    	10 optional ProcessMonitorInfo processInfo;	    //进程内存信息
+	    11 optional CPULoadAvaInfo cpuLoadAvg;		    //CPU负载情况
+        12 optional long     nMSTime = 0;               //机器时间 ms 时间戳
+        13 optional long     nStartMSTime = 0;          //程序启动 ms 时间戳
+        14 optional map<string,vector<HMCvtMarketInfo> >mMCvtUpAddr;//外盘McvtServer/外盘转码 上游地址信息,key：ip:port 
+        15 optional string sName;                        //服务名 eg. L1CvtServer，转码exe名（去掉后缀）
+	};
+
+    //外盘交易时间段
+    struct HTradePeriod
+    {
+        0 optional int m_nBegDate = 0;                  //起始日期
+        1 optional int m_nBegTime = 0;                  //起始时间
+        2 optional int m_nEndDate = 0;                  //结束日期
+        3 optional int m_nEndTime = 0;                  //结束时间
+    };
+    //外盘市场时间信息
+    struct HMarketTimeInfo
+    {
+        0 optional int nTradeSequence = 0;              //当前交易序列
+        1 optional int nDate = 0;                       //当前交易日期
+        2 optional int nTime = 0;                       //当前交易时间
+        3 optional byte cTradeFlag = 0;                 //市场状态
+        4 optional vector<HTradePeriod>vecPeriod;       //交易时间段
+    };
+
+    //服务器信息
+    struct ServerMonitorInfo
+    {
+        0 optional string sVersion;                     //版本号
+        1 optional int nFileDataLoadTime = 0;			//数据中心数据加载时间（包括财务 等）
+        2 optional map<string,string>mapOther;          //其他信息  键值对，后期扩展
+        3 optional string sName;                        //服务名 eg. MarketDataServer
+    };
+
+    struct SysMonitorInfo
+    {
+        0 optional long     nMSTime = 0;                //机器时间 ms 时间戳
+        1 optional long     nStartMSTime = 0;           //程序启动 ms 时间戳
+        2 optional SystemMonitorInfo sysInfo;			//机器内存信息
+    	3 optional ProcessMonitorInfo processInfo;	    //进程内存信息
+	    4 optional CPULoadAvaInfo cpuLoadAvg;		    //CPU负载情况
+        5 optional map<string,DiskInfo> mapDiskInfo;    //磁盘信息,key为路径
+        6 optional ServerMonitorInfo serverInfo;        //服务信息
+    };
+    
+};

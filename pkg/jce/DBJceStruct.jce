@@ -1,0 +1,9 @@
+module DBJceStruct
+{
+    struct stSql
+	{
+		1 require string strSql;
+		2 optional bool bMulti=false;
+	};
+
+};

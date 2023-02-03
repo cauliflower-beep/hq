@@ -1,0 +1,606 @@
+#include "CommonData.jce"
+#include "FuPanBasicData.jce"
+
+module HQSys
+{
+    enum FILE_DATA_TYPE
+    {
+        E_TRADE_DATE = 0,   //getTradeDate
+        E_COMM_CMD,         //getCommCmd
+        E_A_CW_DATA,        //getAllCw,getCWData
+        E_EXT_CW_DATA,      //getCWDataExtra
+        E_QX_DATA,          //getQXData,getAllQx
+        E_CW_FILE,          //getCWFile
+        E_TS_STOCK,         //getTSStock
+        E_NAME_CHANGE,      //getNameChg
+        E_UPCOMING_STOCK,   //getJjssStock,getUpcomingStock
+        E_LTG_CHANGE,       //getLTGChg
+        E_NEW_STOCK,        //getNewStock
+        E_BROKER,           //getBroker
+        E_ZTSS_STOCK,       //getZTSSStock
+        E_BLOCK_CFG,        //getCFG
+        E_FUPAN_DATA,       //getFupanData
+        E_TRADE_CALE,       //getTradeCale
+        E_STOCK_LABEL,      //getStkLabels
+        E_SUBSCRIBE_STOCK,  //getSubscribeStks
+        E_KZZ,              //getKZZ
+        E_COMM_INFO,        //getHCommInfo
+        E_FOREIGN_MID_PRICE,//getForeignRateMidPrice
+        E_AM_STOCK,         //getAMStk
+        E_RAW_FILE_LIST,    //getRawFileList
+        E_RAW_DATA,         //getRawData
+        E_US_ADR,           //getUsAdrInfo
+        E_MARKET_CLOSE_DATA,//getMarketCloseInfo
+        E_M_CW_DATA,        //getCWData
+    };
+
+    enum E_CW_MARKET_TYPE
+    {
+        E_A_CW = 0, //内盘
+        E_M_CW,     //外盘
+    };
+
+    struct SCheckSumReq
+    {
+        1 optional vector<int> vType; //FILE_DATA_TYPE,空获取全部
+    };
+
+    struct SCheckValue
+    {
+        1 optional int iCheckVal;   //校验值
+        2 optional long iTime;      //时间戳
+    };
+
+    struct SCheckSumRsp
+    {
+        1 optional map<int, SCheckValue> mapTypeCheckSum; //FILE_DATA_TYPE->校验码
+    };
+
+    struct SStockUnique  //股票信息
+    {
+        1 optional short shtMarket;
+        2 optional string sCode;
+        3 optional string sName;
+    };
+
+    // 财务数据
+    struct SCWDataReq
+    {
+        2 optional vector<SStockUnique> vStock;
+        3 optional vector<short> vMarket;
+        4 optional E_CW_MARKET_TYPE eMktType = E_A_CW;//vStock和vMarket都为空时,此参数生效
+    };
+    struct SCWDataRsp
+    {
+        1 optional vector<SCWData> vData;
+        2 optional SCheckValue stCheck;
+    };
+
+    // 权息变更数据
+    struct SQXDataReq
+    {
+        2 optional vector<SStockUnique> vStock;
+        3 optional vector<short> vMarket;
+    };
+    struct SQXDataRsp
+    {
+        1 optional vector<SQXData> vData;
+        2 optional SCheckValue stCheck;
+    };
+
+    // 获取财务文件
+    struct SCWFileRsp
+    {
+        1 require string sFile;
+    };
+
+    // 获取退市股票响应结构
+    struct HTSStockRsp
+    {
+        1 optional vector<HTSStock> vData;
+        2 optional SCheckValue stCheck;
+    };
+
+    // 获取股票名字变更信息响应结构
+    struct HNameChgRsp
+    {
+        1 optional vector<HNameChgData> vData;
+        2 optional SCheckValue stCheck;
+    };
+
+    // 获取即将上市股票信息响应结构
+    struct HJjssStockRsp
+    {
+        1 optional vector<HJjssStockData> vData;
+    };
+
+    struct HUpcomingStockReq
+    {
+        1 optional vector<short> vMarket;
+    };
+
+    struct HUpcomingMarketStock
+    {
+        1 optional short shtMarket;
+        2 optional vector<HJjssStockData> vStock;
+    };
+
+    struct HUpcomingStockRsp
+    {
+        1 optional vector<HUpcomingMarketStock> vData;
+        2 optional SCheckValue stCheck;
+    };
+
+    struct HAllCwAndQxDataRsp
+    {
+        1 optional map<string, HQSys::SCWData> mCWData;           // 股票代码和财务数据
+        2 optional map<string, HQSys::SQXData> mQxData;           // 股票代码和权息变更数据
+    };
+    struct HAllCwDataRsp
+    {
+        1 optional map<string, HQSys::SCWData> mCWData;           // 股票代码和财务数据
+        2 optional SCheckValue stCheck;
+    };
+    struct HAllQxDataRsp
+    {
+        1 optional map<string, HQSys::SQXData> mQxData;           // 股票代码和权息变更数据
+        2 optional SCheckValue stCheck;
+    };
+
+    struct HCwAndQxDataReq
+    {
+        1 optional vector<short> vMarket;   //为空表示获取所有市场数据
+    };
+    struct HCwAndQxDataRsp
+    {
+        1 optional vector<HQSys::SCWData> mCWData;           // 财务数据
+        2 optional vector<HQSys::SQXData> mQxData;           // 权息变更数据
+    };
+
+    struct HGetLTGChgReq
+    {
+        1 optional vector<SStockUnique> vStock;
+    };
+
+    struct HGetLTGChgRsp
+    {
+        1 optional map<string, HLTGChg> mData;
+        2 optional SCheckValue stCheck;
+    };
+
+    struct HGetNewStockRsp
+    {
+        1 optional vector<HNewStockInfo> vStock;
+        2 optional SCheckValue stCheck;
+    };
+
+    struct HGetBrokerRsp
+    {
+        1 optional vector<HBrokerData> vData;
+        2 optional SCheckValue stCheck;
+    };
+
+    struct HGetZTSSStockRsp
+    {
+        1 optional vector<HTSStock> vData;
+        2 optional SCheckValue stCheck;
+    };
+
+    struct HCFG
+    {
+        1 optional vector<int> vStock;
+    };
+
+    struct HGetCFGRsp
+    {
+        1 optional map<int, HCFG> mData;
+    };
+
+    struct HFupanDataReq
+    {
+        0 optional int iDate = 0;
+    };
+
+    struct HFupanDataRsp
+    {
+        0 optional FuPan::FupanZTLabelHisData data;
+        1 optional SCheckValue stCheck;
+    };
+
+    struct GetTradeCaleRsp
+    {
+        0 optional map<short, vector<TradeCale>> mTradeCale;
+        1 optional SCheckValue stCheck;
+    };
+
+    //个股标签结构信息
+    struct HStockLaelInfo
+    {
+        0 optional string sStockLabel;      //个股标签
+        1 optional short nLabelType;        //标签参数 1-融资融券 2-新股 3-次新股 4-高质押
+        // 2 optional string sRelateDesc;      //关联描述 暂时去掉，需要再接
+    };
+    struct HMarketStockLael
+    {
+        0 optional map<string, vector<HStockLaelInfo> > mStkLabels;
+    };
+    struct HStockLabelReq
+    {
+        0 optional vector<short> vecMarket; //市场列表
+    };
+    struct HStockLabelRsp
+    {
+        0 optional map<short,HMarketStockLael> mapMarketLabel;
+        1 optional SCheckValue stCheck;
+    };
+
+
+    //申购股票信息
+    struct HSubscribeStkInfo
+    {
+        0 optional long lUpdateTime;                //UPDATETIME
+        1 optional short shtMarket;                 //MARKET
+        2 optional string sCode;                    //STK_CODE
+        3 optional string sName;                    //STK_SHORT_NAME
+        4 optional E_STOCK_TYPE eType;              //股票类型//A股 B股   STK_TYPE_PAR
+        5 optional string sSubscribeCode;           //申购代码 ONL_APL_CODE
+        6 optional string sSubscribeName;           //申购名字 ONL_APL_NAME
+        7 optional int iStartDate;                  //申购起始日期 START_DATE
+        8 optional int iEndDate;                    //申购结束日期  END_DATE
+        9 optional double dSubscribePrice;          //网上申购价格 ONL_APL_PRI
+        10 optional double dSubscribeUserCeil;      //单一用户申购上限 ONL_APL_CEIL
+        11 optional double dSubscribeNum;           //拟网上公开发行股数 PRE_ONL_SHARE_NUM （数据中心单位 万股，这里统一为股）
+    };
+
+    struct HSubscribeReq
+    {
+        0 optional int iCurDate;                    //给0 返回全部，给具体日期则返回这个日期有申购的股票列表
+    };
+    struct HSubscribeRsp
+    {
+        0 optional vector<HSubscribeStkInfo> vecStk;
+        1 optional SCheckValue stCheck;
+    };
+
+    struct HCWDataExtraReq
+    {
+        0 require vector<SStockUnique> vStock;
+    };
+    struct HCWDataExtraRsp
+    {
+        0 optional map<string, HQSys::SCWData_Extra> mData;
+        1 optional SCheckValue stCheck;
+    };
+
+    //通用配置下发，支持随意扩展
+    struct HHCommInfoReq
+    {
+        0 optional vector<string> vecKey;   //如果给了返回该节点下内容，空则返回全部
+    };
+    struct HHCommInfoRsp
+    {
+        0 optional map<string, map<string, string> >mapCommInfo;
+        1 optional SCheckValue stCheck;
+    };
+
+    //最新汇率中间价数据
+    struct HForeignRateMidPriceReq
+    {
+        0 optional string sCode;   //USDCNYC，空返回全部
+    };
+    struct HForeignRateMidPriceRsp
+    {
+        0 optional map<string, HForeignRateMidPrice>mapData;
+        1 optional SCheckValue stCheck;
+    };
+
+    struct HKZZStkInfo
+    {
+        0 optional short shtMarket;                       // 可转债市场
+        1 optional string sCode;                          // 可转债代码
+        2 optional short shtBdMarket;                     // 正股市场
+        3 optional string sBdCode;                        // 正股代码
+        4 optional double dZGPrice;                       // 转股价格
+    };
+    struct GetKZZRsp
+    {
+        0 optional vector<HKZZStkInfo> vData;
+    };
+
+    //AM股对应关系 暂时只有AH对应关系
+    struct HAMStkInfo
+    {
+        0 optional SStockUnique stkA;   //A股
+        1 optional SStockUnique stkM;   //外盘，暂时只有H股
+    };
+    //内外盘股票对应关系
+    struct HAMStkReq
+    {
+        0 optional E_AM_STK_TYPE eAMStkType = E_AM_STK_ALL;        //默认返回全部       
+    };
+    struct HAMStkRsp
+    {
+        0 optional map<E_AM_STK_TYPE,vector<HAMStkInfo> >mapData;
+        1 optional SCheckValue stCheck;
+    };
+
+    //TradeDate相关 包含非交易日，东夏令时等
+	enum E_TRADEDATE_TYPE  
+	{
+		E_TRADEDATE_INVALID = 0,        // 非法类型
+		E_TRADEDATE_NOTRADE = 1,        // 非交易日 每年的非交易可能有多个
+		E_TRADEDATE_HALF_AM = 2,        // 半日市 上午
+		E_TRADEDATE_HALF_PM = 3,        // 半日市 下午 （暂时没有，这里预留）
+		E_TRADEDATE_WINTER = 4,         // 冬令时日期 每个市场每年一个
+		E_TRADEDATE_SUMMER = 5,         // 夏令时日期 每个市场每年一个
+		E_TRADEDATE_NORMAL = 6,         // 正常交易日 默认管理平台不能也没必要设置这个
+
+	};
+    struct HTradeDateInfo
+    {
+        0 optional short market = 0;                                    //市场
+        1 optional short year = 0;                                      //年份 YYYY
+        2 optional short type = 1;                                      //类型 E_TRADEDATE_TYPE
+        3 optional vector<int> vecDate;                                 //日期列表，（数据库中拼成字符串，多个日期 “,”号分隔）
+    };
+    struct HTradeDateReq
+    {
+        0 optional vector<short> vecMarket;         //市场列表 空返回全部
+        1 optional int nTimeStamp = 0;              //客户端传上次时间戳（全局的与市场无关），如果比服务端时间戳小，返回全量数据  
+    };
+    struct HTradeDateRsp
+    {
+        0 optional map<short,map<short,map<short,HTradeDateInfo> > > mapData;    //key为 <market,year,type,data>
+        1 optional int nTimeStamp = 0;              //服务端最新时间戳  实际是db里最新的时间戳（全局的与市场无关）
+        2 optional SCheckValue stCheck;
+    };
+    struct HReportTradeDateReq
+    {
+        0 optional vector<HTradeDateInfo> vecDel;   //要删除的数据 这里的日期不用不赋值
+        1 optional vector<HTradeDateInfo> vecAdd;   //要新增的数据 后台replace实现
+    };
+    struct HReportTradeDateRsp
+    {
+        0 optional int nExt = 0;                    //暂时预留
+    };
+
+    //业务指令相关 暂时未实现，视后续具体业务而定
+    struct HCommCmdInfo
+    {
+        0 optional string sModule;                  //模块名 比如 Monitor
+        1 optional string sCmd;                     //cmd指令  业务自己解析
+        2 optional string sContent;                 //具体内容 业务自己解析
+    };
+    //上报
+    struct HReportCommCmdReq
+    {
+        0 optional vector<HCommCmdInfo> vecData;  
+    };
+    struct HReportCommCmdRsp
+    {
+        0 optional int nExt = 0;                    //暂时预留
+    };
+    //获取指令
+    struct HCommCmdReq
+    {
+        0 optional string sModule;                  //模块名
+        1 optional int nTimeStamp = 0;              //客户端传上次时间戳（全局的与市场无关），如果比服务端时间戳小，返回全量数据  
+    };
+    struct HCommCmdRsp
+    {
+        0 optional map<string,HCommCmdInfo>mapData; //数据
+        1 optional int nTimeStamp = 0;              //服务端最新时间戳  实际是db里最新的时间戳（全局的与市场无关）
+    };
+
+    struct HStdRawData
+    {
+        0 optional short shtMarket = -1;
+        1 optional string m_pKey;
+        2 optional int m_intKeyLen = 0;
+        3 optional string m_pData;
+        4 optional int m_intDataLen = 0;
+        5 optional string sMd5;
+    };
+    
+    struct HStdRawFileReq
+    {
+        1 optional map<string, string> mFileList;   //key:filename value:md5
+    };
+    struct HStdRawFileRsp
+    {
+        1 optional vector<string> vFileName;
+    };
+
+    struct HStdRawDataReq
+    {
+        1 optional vector<string> vFileName;
+    };
+    struct HStdRawDataRsp
+    {
+        1 optional map<string,HStdRawData> mStdRawData;     //<filename,HStdRawData>
+    };
+    
+    struct HFileDataInfoRsp
+    {
+        0 optional string sVersion;                 //FileDataServer 版本号
+        1 optional int nCwUpdateTime = 0;           //沪深财务数据更新时间 时间戳s
+        2 optional int nLtgUpdateTime = 0;          //沪深流通股更新时间
+        3 optional int nQxUpdateTime = 0;           //沪深权息数据更新时间
+    };
+
+    // 美股与港股的关联关系
+    struct HUsAdrInfo
+    {
+        0 optional SStockUnique stkUS;   // 美股
+        1 optional SStockUnique stkHK;   // 港股
+        2 optional int iAdrRate;         // ADR换算比例
+    };
+
+    struct HUsAdrInfoReq
+    {
+        0 optional vector<SStockUnique> vStock;
+    };
+
+    struct HUsAdrInfoRsp
+    {
+        0 optional vector<HUsAdrInfo> vAdrInfo;
+        1 optional SCheckValue stCheck;
+    };
+
+    struct HMarketCloseInfo
+    {
+        0 optional vector<short> vMarket;             // 相同休市提示信息的市场id
+        1 optional map<int, string> mDateToCloseInfo; // 日期对应的休市提示信息
+    };
+    struct HMarketCloseDataRsp
+    {
+        0 optional vector<HMarketCloseInfo> vCloseInfo;
+        1 optional SCheckValue stCheck;
+    };
+
+    interface FileData
+    {
+        //校验码
+        int getCheckSum(SCheckSumReq stReq, out SCheckSumRsp stRsp);
+
+        //交易日数据获取
+        int getTradeDate(HTradeDateReq stReq,out HTradeDateRsp stRsp);
+        //交易日数据上报 带删除功能
+        int reportTradeDate(HReportTradeDateReq stReq,out HReportTradeDateRsp stRsp);		
+
+        //指令数据获取
+        int getCommCmd(HCommCmdReq stReq,out HCommCmdRsp stRsp);
+        //指令数据上报
+        int reportCommCmd(HReportCommCmdReq stReq,out HReportCommCmdRsp stRsp);	
+
+        /*
+        * 获得财务数据
+        */
+        int getCWData(SCWDataReq stReq, out SCWDataRsp stRsp);
+
+        /*
+        * 获得额外的财务数据
+        */
+        int getCWDataExtra(HCWDataExtraReq stReq, out HCWDataExtraRsp stRsp);
+
+        /*
+        * 获取权息变更数据
+        */
+        int getQXData(SQXDataReq stReq, out SQXDataRsp stRsp);
+
+        /*
+        * 获取财务数据的文件内容
+        */
+        int getCWFile(out SCWFileRsp stRsp);
+
+        /*
+        * 获取已经退市的股票
+        */
+        int getTSStock(out HTSStockRsp stRsp);
+
+        /*
+        * 获取股票名字变更信息
+        */
+        int getNameChg(out HNameChgRsp stRsp);
+
+        /*
+        * 获取即将上市股票信息
+        */
+        int getJjssStock(out HJjssStockRsp stRsp);
+        int getUpcomingStock(HUpcomingStockReq stReq, out HUpcomingStockRsp stRsp);
+
+        /*
+        *  所有财物数据，权息数据
+        */
+        int getAllCwAndQx(out HAllCwAndQxDataRsp stRsp);
+
+        /*
+        *  根据市场取财物,权息数据
+        */
+        int getCwAndQx(HCwAndQxDataReq stReq, out HCwAndQxDataRsp stRsp);
+        
+        /*
+        *  所有财物数据，权息数据
+        */
+        int getAllCw(out HAllCwDataRsp stRsp);
+	
+        /*
+        *  所有财物数据，权息数据
+        */
+        int getAllQx(out HAllQxDataRsp stRsp);
+
+
+        /*
+        * 获取股票流通股变动信息
+        */
+        int getLTGChg(HGetLTGChgReq stReq, out HGetLTGChgRsp stRsp);
+
+        /*
+        * 获取新股
+        */
+        int getNewStock(out HGetNewStockRsp stRsp);
+
+        /*
+        * 获取经纪商信息
+        */
+        int getBroker(out HGetBrokerRsp stRsp);
+
+        /*
+        * 获取暂停上市股票信息
+        */
+        int getZTSSStock(out HGetZTSSStockRsp stRsp);
+
+        /*
+        * 获取板块成分股
+        */
+        int getCFG(out HGetCFGRsp stRsp);
+
+        /*
+        * 获取复盘数据
+        */
+        int getFupanData(out FuPan::FupanZTLabelHisData stRsp);
+        int getFupanDataNew(HFupanDataReq stReq, out HFupanDataRsp stRsp);
+
+        /*
+        * 获取交易日历
+        */
+        int getTradeCale(out GetTradeCaleRsp stRsp);
+
+        /*
+        * 获取个股标签 
+        */
+        int getStkLabels(HStockLabelReq stReq,out HStockLabelRsp stRsp);
+
+        /*
+        * 获取申购股票列表
+        */
+        int getSubscribeStks(HSubscribeReq stReq,out HSubscribeRsp stRsp);
+        /*
+        * 获取可转债股票
+        */
+        int getKZZ(out GetKZZRsp stRsp);
+        
+        //通用配置下发接口
+        int getHCommInfo(HHCommInfoReq stReq, out HHCommInfoRsp stRsp);
+        
+        //汇率中间价
+        int getForeignRateMidPrice(HForeignRateMidPriceReq stReq, out HForeignRateMidPriceRsp stRsp);
+        //内外盘对应关系 暂时只有AH
+        int getAMStk(HAMStkReq stReq,out HAMStkRsp stRsp);
+
+        //获取文件列表
+        int getRawFileList(HStdRawFileReq stReq, out HStdRawFileRsp stRsp);
+        //获取文件内容
+        int getRawData(HStdRawDataReq stReq, out HStdRawDataRsp stRsp);
+        
+        //获取filedataserver版本号及数据更新信息等
+        int getFileDataInfo(out HFileDataInfoRsp stRsp);
+
+        //获取美股与港股的关联关系
+        int getUsAdrInfo(HUsAdrInfoReq stReq,out HUsAdrInfoRsp stRsp);
+
+        //获取市场休市提示信息
+        int getMarketCloseInfo(out HMarketCloseDataRsp stRsp);
+    };
+
+};

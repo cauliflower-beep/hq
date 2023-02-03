@@ -1,0 +1,1246 @@
+#include "AdsData.jce"
+
+module HQSys
+{
+    enum ADS_PROXY_RET
+    {
+        ADP_OK = 0,        
+        ADP_INVALID_REQ = -2,
+        ADP_UNKNOWN = -99,
+    };  
+
+    enum UP_LIST_TYPE
+    {
+        UP_LIST_TYPE_ALL        = 0,        // 所有
+        UP_LIST_TYPE_A_BLOCK    = 1,        // A板块
+        UP_LIST_TYPE_A          = 2,        // A股
+        UP_LIST_TYPE_B          = 3,        // B股
+        UP_LIST_TYPE_JJ         = 4,        // 基金
+        UP_LIST_TYPE_SH_A       = 5,        // 上海A股
+        UP_LIST_TYPE_SH_B       = 6,        // 上海B股
+        UP_LIST_TYPE_SH_ZQ      = 7,        // 上海债券
+        UP_LIST_TYPE_SZ_A       = 8,        // 深圳A股
+        UP_LIST_TYPE_SZ_B       = 9,        // 深圳B股
+        UP_LIST_TYPE_SZ_CY      = 10,       // 深圳创业版
+        UP_LIST_TYPE_SZ_SM      = 11,       // 深圳中小版
+        UP_LIST_TYPE_SZ_ZQ      = 12,       // 深圳债券
+        UP_LIST_TYPE_ZQ         = 13,       // 债券
+        UP_LIST_TYPE_BK_HY      = 14,       // 版块
+        UP_LIST_TYPE_BK_DY      = 15,       // 版块
+        UP_LIST_TYPE_ZS         = 16,       // 指数 
+        UP_LIST_TYPE_QZ         = 17,       // 权证
+        UP_LIST_TYPE_MARKET_ZJ  = 18,       // 中金所
+        UP_LIST_TYPE_SZ_GEM     = 19,       // 深圳创业
+        UP_LIST_TYPE_SZ_JJ      = 20,       // 深圳基金
+        UP_LIST_TYPE_SH_JJ      = 21,       // 上海基金
+        UP_LIST_TYPE_BK_GN      = 22        // 概念
+    };
+
+	enum KLINE_TYPE
+	{
+		KLINE_MIN5		= 0,			// 5分钟
+		KLINE_MIN15		= 1,			// 15分钟
+		KLINE_MIN30		= 2,			// 30分钟
+		KLINE_MIN60		= 3,			// 60分钟
+		KLINE_DAY		= 4,			// 1天
+		KLINE_WEEK		= 5,			// 星期线
+		KLINE_MON		= 6,			// 月线
+		KLINE_MIN1		= 7,			// 1分钟
+		KLINE_MON3		= 10,			// 季度线
+		KLINE_YEAR		= 11			// 年线
+	};
+
+    enum J_MONEYFLOW_MIN_TYPE
+    {
+        J_MONEYFLOW_MIN1 = 0,
+        J_MONEYFLOW_MIN5 = 1,
+        J_MONEYFLOW_MIN15 = 2,
+        J_MONEYFLOW_MIN30 = 3,
+        J_MONEYFLOW_MIN60 = 4
+    };
+        
+    enum J_MONEYFLOW_DAY_TYPE
+    {
+        J_MONEYFLOW_DAY = 4,
+        J_MONEYFLOW_WEEK = 5,
+        J_MONEYFLOW_MON = 6,
+        J_MONEYFLOW_SEASON = 10,
+        J_MONEYFLOW_YEAR = 11
+    };
+    
+    enum J_MONEYFLOW_DATA_TYPE
+    {
+        J_MONEYFLOW_AMOUNT = 1,
+        J_MONEYFLOW_VOLUME = 2,
+        J_MONEYFLOW_NUMBER = 4, 
+        J_MONEYFLOW_RANK = 8
+    };
+    
+    enum J_COLSET_TYPE
+    {
+        J_SHSZ_QT = 0,
+        J_MULTI_QT = 1,
+        J_REALTIME_ZJ = 2,
+        J_THREE_DAYS_ZJ = 3,
+        J_FIVE_DAYS_ZJ = 4,
+        J_TEN_DAYS_ZJ = 5,
+        J_DDE = 6
+    };  
+    
+    enum J_REG_TYPE
+    {
+        J_REG_CANCEL = 0,
+        J_REG_REGIST = 1,
+        J_REG_QUERY = 2
+    };
+        
+    //4015 tick数据，请求结构
+    struct JTickDataReq
+    {
+        1 require short shtSetcode;
+        2 require string sCode;
+        3 optional short shtStartxh=0;
+        4 optional short shtNum = 100;
+    };
+    //4015 tick数据，回包结构
+    struct JTickDataRsp
+    {
+        1 optional vector<JTickData> vTickData;
+    };
+
+    // 4021 历史tick数据, 请求结构
+    struct JHisTickDataReq
+    {
+        1 require short shtSetcode;
+        2 require string sCode;
+        3 require int iDate;					// 格式 YYYYMMDD
+        4 optional short shtStartxh = 0;
+        5 optional short shtNum = 100;
+    };
+    // 4021 历史tick数据, 回包结构
+    struct JHisTickDataRsp
+    {
+        1 optional vector<JTickData> vTickData;
+        2 optional float fClose;
+    };
+
+    // 1326 K线数据, 请求结构
+    struct JKLineOldReq
+    {
+        1 require short shtSetcode;
+        2 require string sCode;
+        3 require KLINE_TYPE shtLineType;
+        4 optional short shtMulNum = 1;
+        5 optional short shtOffset = 0;
+        6 optional short shtItemNum = 100;
+    };
+    // 1326 K线数据, 回包结构
+    struct JKLineOldRsp
+    {
+        1 optional short shtPrecise;
+        2 optional vector<JAnalyData> vAnalyData;
+    };
+    
+  	//6001请求包
+	//struct JRegStkDictReq
+	//{
+	//    1 optional J_REG_TYPE eType;
+	//    2 optional short setcode;
+	//    3 optional string checksum; 
+	//};
+	
+	//6007请求，码表包含市场类型
+	struct JRegStkDictNewReq
+	{
+	    1 optional J_REG_TYPE regType;
+	    2 optional short setcode;
+	    3 optional string checksum; 
+		  4 optional UP_LIST_TYPE eType;
+	};
+
+	//6001回包
+	//struct JRegStkDictRsp
+	//{
+	//	1  optional string checksum;
+	//	2  optional vector<JSStockInfoUp> vSInfoData; 
+	//};
+
+	//6004请求包
+	struct JRegStkDictAllReq
+	{
+	    1 optional J_REG_TYPE eType;
+	    2 optional vector<JMarketRegInfo> vMarketList; 
+	};
+
+    //6001回包
+    struct JRegStkDictRsp
+    {
+        1  optional string checksum;
+        2  optional vector<JSStockInfoUp> vSInfoData; 
+    };
+
+    //6007回包
+    struct JRegStkDictNewRsp
+    {
+        1  optional string checksum;
+        2  optional vector<JSStockInfoUp> vSInfoData; 
+    };
+
+    //6005请求包
+    struct JCPTMinAllReq
+    {
+        1  optional J_REG_TYPE eType;
+        2  optional vector<short> vSetCode;      
+    };
+
+    //6005回包
+    struct JCPTMinAllRsp
+    {
+        1 optional vector<JMarketCPTMinInfo> vMInfoData;
+    };
+
+    //6004回包
+    struct JRegStkDictAllRsp
+    {
+        1  optional vector<JMarketDictInfo> vStkDictList;
+    };
+
+    // 5013 历史分时数据, 请求结构
+    struct JHisMinuteReq
+    {
+        1 require short shtSetcode;
+        2 require string sCode;
+        3 require int iDate;		// 格式 YYYYMMDD
+    };
+    // 5013 历史分时数据, 回包结构
+    struct JHisMinuteRsp
+    {
+        1 optional float fClose;
+        2 optional vector<JRTMinData> vMinuteData;
+    };
+
+    // 5012 分时数据, 请求结构
+    struct JMinuteReq
+    {
+        1 require short shtSetcode;
+        2 require string sCode;
+        3 optional bool bHqFlag = false;         // 是否需要行情信息
+    };
+    // 5012 分时数据, 回包结构
+    struct JMinuteRsp
+    {
+        1 optional JCurrStockData sttCurrStockData;
+        2 optional vector<JRTMinData> vMinuteData;
+    };
+
+    // 1306 分价表, 请求结构
+    struct JFJBReq
+    {
+        1 require short shtSetcode;
+        2 require string sCode;
+    };
+    // 1306 分价表, 回包结构
+    struct JFJBRsp
+    {
+        1 optional JCurrStockData sttCurrStockData;
+        2 optional vector<JPriceVolTable> vPriceVolTable;
+    };
+
+    // 1307 买卖力道, 请求结构
+    struct JMMLDReq
+    {
+        1 require short shtSetcode;
+        2 require string sCode;
+    };
+    // 1307 买卖力道, 回包结构
+    struct JMMLDRsp
+    {
+        1 optional vector<JRTMinData> vMinuteData;
+    };
+
+    // 1308 持仓量, 请求结构
+    struct JCCLReq
+    {
+        1 require short shtSetcode;
+        2 require string sCode;
+    };
+    // 1308 持仓量, 回包结构
+    struct JCCLRsp
+    {
+        1 optional vector<JRTMinData> vMinuteData;
+    };
+
+    // 1313 支持5档买卖盘, 请求结构
+    struct JCombHqReq
+    {
+        1 require vector<JStock> vMarket;
+    };
+    // 1313 支持5档买卖盘, 回包结构
+    struct JCombHqRsp
+    {
+        1 optional short shtReserve;
+        2 optional vector<JCurrStockData> vCurrStockData;
+    };
+
+    // 1315 , 1321 支持5档买卖盘2, 请求结构
+    struct JCombHq2Req
+    {
+        1 require vector<JStock> vMarket;
+    };
+    // 1315, 1321 支持5档买卖盘2, 回包结构
+    struct JCombHq2Rsp
+    {
+        1 optional vector<JCurrStockData> vCurrStockData;
+    };
+
+    // 1311, 1302 支持5档买卖盘的个股行情, 请求结构
+    struct JGeGuHqReq
+    {
+        1 require short shtSetcode;
+        2 require string sCode;
+    };
+    // 1311, 1302 支持5档买卖盘的个股行情, 回包结构
+    struct JGeGuHqRsp
+    {
+        1 optional JCurrStockData sttCurrStockData;
+    };
+
+    // 1316 支持5档买卖盘, 支持屏蔽在A股中003 和 609, 请求结构
+    struct JMultiHq5MmpReq
+    {
+        1 require short shtSetDomain;
+        2 require short shtColType;
+        3 require short shtStartxh;
+        4 require short shtSortType;
+        5 optional short shtWantNum = 100;
+    };
+    // 1316 支持5档买卖盘, 支持屏蔽在A股中003 和 609, 回包结构
+    struct JMultiHq5MmpRsp
+    {
+        1 optional vector<JCurrStockData> vCurrStockData;
+    };
+
+    // 4029 精简行情, 请求结构
+    struct JSimHqReq
+    {
+        1 require vector<JStock> vMarket;
+    };
+    // 4029 精简行情, 回包结构
+    struct JSimHqRsp
+    {
+        1 require vector<JSimHq> vSimHq;
+    };
+
+    // 30 是否需要认证, 请求结构
+    struct JNeedAuthReq
+    {
+        1 require string sUsername;     // 13字节
+        2 require string sPassword;     // 13字节
+        3 optional long lReserved = 0;
+    };
+    // 30 是否需要认证, 回包结构
+    struct JNeedAuthRsp
+    {
+        1 optional byte cSucFlag;
+        2 optional byte cNeedAuth;
+        3 optional string sErrMsg;
+        4 optional vector<string> vIpInfo;
+    };
+
+    // 5000 L2登录, 请求结构
+    struct JLoginReq
+    {
+        1 optional int iVer;
+        2 require int iEncryptType;             //0 加密  非0 登陆失败
+        3 require long lSocket;                 //当前连接主站的sockeid
+        4 require string sTime;                 //当前登陆时间
+        5 require string sUserId;               //由token中rd加密
+        6 require string sToken;
+        7 require JToken sttToken;
+    };
+    // 5000 L2登录, 回包结构
+    struct JLoginRsp
+    {
+        1 optional int iResult;
+        2 optional string sMsg;
+    };
+
+    // 5014 L2行情, 请求结构
+    struct JL2HqReq
+    {
+        1 require long lReqId;
+        2 require J_REG_TYPE cRegFlag;            // 0注销，1注册，2查询不推送
+        3 require short shtMarket;
+        4 require string sCode;
+    };
+    // 5014 L2行情, 回包结构
+    struct JL2HqRsp
+    {
+        1 optional unsigned short ushtMarket;
+        2 optional string sCode;
+        3 optional byte cFlag;
+        4 optional JCurrStockData sttCurrStockData;
+    };
+
+    // 5016 L2逐笔交易, 请求结构
+    struct JL2TransactionReq
+    {
+        1 require long lReqId;
+        2 require J_REG_TYPE cRegFlag;                // 0注销，1注册, 2获取
+        3 require int iStartxh;                 //开始下标(从头开始的位置)
+        4 optional int iNum = 100;              //记录条数(向后取多少条)
+        5 require unsigned short ushtMarket;
+        6 require string sCode;
+    };
+    // 5016 L2 逐笔交易, 回包结构
+    struct JL2TransactionRsp
+    {
+        1 optional unsigned short ushtMarket;
+        2 optional string sCode;
+        3 optional int iIndex;
+        4 optional vector<JTransaction> vTransaction;
+    };
+
+    // 5017, 5032, 5033 L2委托单信息, 请求结构
+    struct JL2OrderDetailReq
+    {
+        1 require long lReqId;
+        2 require byte cRegFlag;                // 0注销，1注册
+        3 require int iStartxh;                 //开始下标(从头开始的位置)
+        4 optional int iNum = 100;              //记录条数(向后取多少条)
+        5 require unsigned short ushtMarket;
+        6 require string sCode;
+    };
+    // 5017, 5032, 5033 L2委托单信息, 回包结构
+    struct JL2OrderDetailRsp
+    {
+        1 optional unsigned short ushtMarket;
+        2 optional string sCode;
+        3 optional int iIndex;
+        4 optional vector<JOrderRec> vOrderRec;
+    };
+
+    // 5026 短线精灵, 请求结构
+    struct JDxjlReq
+    {
+        1 require long lReqId;
+        2 require byte cRegFlag;            // 0注销，1注册
+        3 require int iStartxh;             //开始下标(从头开始的位置)
+        4 optional int iNum = 100;          //记录条数(向后取多少条)
+    };
+    // 5026 短线精灵, 回包结构
+    struct JDxjlRsp
+    {
+        1 optional int iIndex;
+        2 optional vector<JDxjl> vDxjl;
+    };
+
+    // 5015 L2委托队列, 请求结构
+    struct JL2OrderQueueReq
+    {
+        1 require long lReqId;
+        2 require byte cRegFlag;                // 0注销，1注册
+        3 require unsigned short ushtMarket;
+        4 require string sCode;
+    };
+    // 5015 L2委托队列, 回包结构
+    struct JL2OrderQueueRsp
+    {
+        1 optional unsigned short ushtMarket;
+        2 optional string sCode;
+        3 optional vector<JOrderQueue> vOrderQueue;
+    };
+
+    // 5018 L2价格委托, 请求结构
+    struct JL2AllPriceOrderReq
+    {
+        1 require long lReqId;
+        2 require byte cRegFlag;
+        3 require unsigned short ushtMarket;
+        4 require string sCode;
+    };
+    // 5018 L2价格委托, 回包结构
+    struct JL2AllPriceOrderRsp
+    {
+        1 optional long lReqId;
+        2 optional int iLen;
+        3 optional unsigned int uiStockId;                      //股票唯一标识
+        4 optional JOrderSumStat sttSumStat;
+        5 optional vector<JOrderQueuePrice> vBuyQueuePrice;     //买盘
+        6 optional vector<JOrderQueuePrice> vSellQueuePrice;    //卖盘
+    };
+
+    // 5019 L2逐笔委托单量, 请求结构
+    struct JL2HqPriceOrderQueueReq
+    {
+        1 require long lReqId;
+        2 require byte cRegFlag;
+        3 require byte cSide;
+        4 require float fPrice;
+        5 require unsigned short ushtMarket;
+        6 require string sCode;
+    };  
+    // 5019 L2逐笔委托单量, 回包结构
+    struct JL2HqPriceOrderQueueRsp
+    {
+        1 optional long lReqId;
+        2 optional int iLen;
+        3 optional unsigned int uiStockId;                      //股票唯一标识
+        4 optional byte cType;                                  // 0 buy, 1 sell
+        5 optional unsigned int uiPrice;                        // 价位
+        6 optional vector<JOrderQueueItemOper> vItemOper;
+    };
+
+    // 5031 L2大单成交, 请求结构
+    struct JL2HqBigTransactionReq
+    {
+        1 require long lReqId;
+        2 require byte cRegFlag;                // 0注销，1注册, 2获取
+        3 require int iStartxh;                 //开始下标(从头开始的位置)
+        4 optional int iNum = 100;              //记录条数(向后取多少条)
+        5 require unsigned short ushtMarket;
+        6 require string sCode;
+    };
+    // 5031 L2大单成交, 回包结构
+    struct JL2HqBigTransactionRsp
+    {
+        1 optional unsigned short ushtMarket;
+        2 optional string sCode;
+        3 optional int iIndex;
+        4 optional vector<JTransaction> vTransaction;
+    };
+
+	//32,主站扩充信息3
+	//struct JHostMore3Req
+	//{
+	//	1 optional byte setcode;
+	//	2 optional byte verflag;
+	//};
+
+	//32回包
+	//struct JHostMore3Rsp
+	//{
+	//	1 optional Jhostmore sInfo;
+	//};
+	
+	//13协议，主站扩充信息1
+	//struct JHostMore1Req
+	//{
+	//	1 optional short req;
+	//};
+
+	//13协议回包
+	//struct JHostMore1Rsp
+	//{
+	//	1 optional Jhostmore1 sInfo;
+	//};
+
+	//31,主站扩充信息2
+	//struct JHostMore2Req
+	//{
+	//	1 optional byte setcode;
+	//	2 optional byte verflag;
+	//};
+
+	//31回包
+	//struct JHostMore2Rsp
+	//{
+	//	1 optional Jhostmore2 sInfo;
+	//};
+
+	//33,主站所有信息
+	//struct JHostMoreAllReq
+	//{
+	//	1 optional vector<short> vSetCode;
+	//};
+	
+	//33回包
+	//struct JHostMoreAllRsp
+	//{
+	//	1 optional Jhostmoreall sInfo;
+	//	2 optional vector<Jhostmoreitem> vItem;
+	//};
+
+	//21协议，内部窥视信息
+	//struct JOtherinfoReq
+	//{
+	//	1 optional short req;
+	//};
+	
+	//21回包
+	//struct JOtherinfoRsp
+	//{
+	//	1 optional JOtherinfo sInfo;
+	//};
+
+    // 5007 列表查询-类型到股票, 请求结构
+    struct JRegNewListReq
+    {
+        1 require long lReqId;
+        2 require byte cRegFlag;
+        3 require vector<JNewListReqItem> vItem;
+    };
+//  // 5007 列表查询-类型到股票, 回包结构
+//  struct JRegNewListRsp
+//  {
+//  };
+
+    //1104，获取码表，不带压缩，返回结构不带市场类型，包含前收盘价
+    struct JStockInfGetReq
+    {
+        1 optional short setcode;
+    };
+    
+    //1104回包
+    struct JStockInfGetRsp
+    {
+        1 optional vector<JSStockInfoUp> vStockDict;
+    };
+
+    //1801内盘所有股票当日资金流向
+    struct JFlowDataReq
+    {
+        1 optional short req;//可不填值
+    };
+    
+    //1802,单只股票当日资金流向
+    struct JFlowDataItemReq
+    {
+        1 optional short setcode;//证券市场
+        2 optional string Code;//证券代码
+    };
+	
+    //1805，单只股票历史日资金流向
+    struct JFlowDataHisReq
+    {
+        1 optional J_MONEYFLOW_DAY_TYPE eType;//固定填J_MONEYFLOW_DAY
+        2 optional short setcode;//证券市场
+        3 optional string Code;//证券代码
+        4 optional int offset = 0;//从什么位子开始取
+        5 optional int num = 100;//要取的个数
+        6 optional int resrv; //保留
+    };
+    
+    //1806,内盘所有股票多日资金流向
+    struct JFlowDataDaysReq
+    {
+        1 optional short req;//选填
+    };
+    
+    //1812,内盘所有股票实时DDX
+    struct JFlowDataDDXReq
+    {
+        1 optional short req;//选填
+    };
+
+    //1813,内盘所有股票历史DDX
+    struct JFlowDataHisDDXReq
+    {
+        1 optional short req;//选填
+    };
+
+    //1327,内盘单只股票分时资金流向
+    struct JMinFlowDataReq
+    {
+        1 optional J_MONEYFLOW_MIN_TYPE eType;
+        2 optional short setcode;//证券市场
+        3 optional string Code;//证券代码
+        4 optional int offset = 0;//从什么位子开始取
+        5 optional int num = 100;//要取的个数
+        6 optional int resrv; //保留
+    };
+
+    //1801回包
+    struct JFlowDataRsp
+    {
+        1 optional vector<JTolMoneyFlow> vMFlowData;
+    };
+    
+    //1802回包
+    struct JFlowDataItemRsp
+    {
+        1 optional JTolMoneyFlow stkMFlow;
+    };
+    
+    //1805回包
+    struct JFlowDataHisRsp
+    {
+        1 optional vector<JTolMoneyFlow> vstkMFlow;
+    };
+    
+    //1806回包
+    struct JFlowDataDaysRsp
+    {
+        1 optional vector<JstkDaysMoneyFlow> vstkDaysMFlow;
+    };
+    
+    //1812回包
+    struct JFlowDataDDXRsp
+    {
+        1 optional vector<JstkDDXMoneyFlow> vDDX;
+    };
+    
+    //1813回包
+    struct JFlowDataHisDDXRsp
+    {
+        1 optional vector<JstkHisDDXMoneyFlow> vHisDDX;
+    };
+    
+    //1327回包
+    struct JMinFlowDataRsp
+    {
+        1 optional vector<JTolMoneyFlow> vMinFlow;
+    };
+    
+    //5025历史资金流
+    struct JNewHisMoneyFlowReq
+    {
+        1 optional short cMarket;
+        2 optional string code;
+        3 optional J_MONEYFLOW_DAY_TYPE eType;
+        4 optional J_MONEYFLOW_DATA_TYPE dType;//J_MONEYFLOW_AMOUNT,J_MONEYFLOW_VOLUME,J_MONEYFLOW_NUMBER
+        5 optional int offset;//从什么位子开始取
+        6 optional int num;//要取的个数
+    };
+		
+    //5025回包
+    struct JNewHisMoneyFlowRsp  
+    {
+        1 optional vector<JTolMoneyFlow> vNewMF;
+    };
+
+    //5020实时推送资金流
+    struct JRegMoneyFlowReq
+    {
+        1 optional short cMarket;
+        2 optional string code;
+        3 optional J_REG_TYPE eType;
+        4 optional J_MONEYFLOW_DATA_TYPE dType;//J_MONEYFLOW_AMOUNT,J_MONEYFLOW_VOLUME,J_MONEYFLOW_NUMBER,J_MONEYFLOW_RANK
+    };
+
+    //5020回包
+    struct JRegMoneyFlowRsp
+    {
+        1 optional JTolMoneyFlow flow;
+        2 optional JSMFRank rank;
+    };
+
+    //5027分时资金流
+    struct JRtMinFlowDataReq
+    {
+        1 optional short cMarket;
+        2 optional string code;
+        3 optional J_MONEYFLOW_DATA_TYPE dType;//J_MONEYFLOW_AMOUNT,J_MONEYFLOW_VOLUME,J_MONEYFLOW_NUMBER
+    };
+
+    //5027回包
+    struct JRtMinFlowDataRsp
+    {
+        1 optional vector<JTolMoneyFlow> vRtFlow;
+    };
+
+    //5011,单只股票实时行情
+    struct JCurrStkHQReq
+    {
+        1 optional J_REG_TYPE eType;
+        2 optional short cMarket;
+        3 optional string code;
+    };
+
+    //5011回包
+    struct JCurrStkHQRsp
+    {
+        1 optional JCurrStockData stkHQ;
+    };
+
+    //5021新的行情信息
+    struct JRegTypeToStockReq
+    {
+        1 optional J_REG_TYPE eType;
+        2 optional J_COLSET_TYPE cType;
+        3 optional int iType;
+    };
+
+    //5021, 5022, 5023回包
+    struct JRegNewColListRsp
+    {
+        1 optional vector<JSListData> vectData;
+        2 optional vector<unsigned short> vectCols;
+        3 optional vector<short> vectIndex;
+    };
+    
+    //5022
+    struct JRegBlock2StockReq
+    {
+        1 optional J_REG_TYPE eType;        
+        2 optional vector<string> vBlockCode;
+    };
+    
+    //5029
+    struct JRegMBlock2StockReq
+    {        
+        1 optional J_COLSET_TYPE eColset; //暂时没有支持外盘, 外盘不能使用JSListData结构
+        2 optional vector<string> vBlockCode;
+    };
+    
+    
+    //5023 股票到板块
+    struct JRegStock2BlockReq
+    {
+        1 optional J_REG_TYPE eType;        
+        2 optional vector<JStock> vStock;
+    };    
+
+    //6002，交易时间
+    struct JRegMarketTradeInfoReq
+    {
+        1 optional J_REG_TYPE eType;
+        2 optional vector<short> vSetCode;
+    };
+
+    //6002回包
+    struct JRegMarketTradeInfoRsp
+    {
+        1 optional map<short, vector<short>> vMTradeInfo;
+    };
+
+    //32,主站扩充信息3
+    struct JHostMore3Req
+    {
+        1 optional byte setcode;
+        2 optional byte verflag;
+    };
+
+    //32回包
+    struct JHostMore3Rsp
+    {
+        1 optional Jhostmore sInfo;
+    };
+    
+    //13协议，主站扩充信息1
+    struct JHostMore1Req
+    {
+        1 optional short req;
+    };
+
+    //13协议回包
+    struct JHostMore1Rsp
+    {
+        1 optional Jhostmore1 sInfo;
+    };
+
+    //31,主站扩充信息2
+    struct JHostMore2Req
+    {
+        1 optional byte setcode;
+        2 optional byte verflag;
+    };
+
+    //31回包
+    struct JHostMore2Rsp
+    {
+        1 optional Jhostmore2 sInfo;
+    };
+
+    //33,主站所有信息
+    struct JHostMoreAllReq
+    {
+        1 optional vector<short> vSetCode;
+    };
+    
+    //33回包
+    struct JHostMoreAllRsp
+    {
+        1 optional Jhostmoreall sInfo;
+        2 optional vector<Jhostmoreitem> vItem;
+    };
+    
+    //5200协议，最近交易时间
+    struct JRegMarketCPTMinReq
+    {
+        1 optional J_REG_TYPE eType;
+        2 optional short setcode;
+    };
+
+    //5200回包
+    struct JRegMarketCPTMinRsp
+    {
+        1 optional JRegMarketCPTMinAns sInfo;
+    };
+    
+    //6006,注册初始化市场
+    struct JRegMarketInitAllReq
+    {
+        1 optional J_REG_TYPE  eType;
+        2 optional vector<short> vSetcode;
+    };
+    
+    //6006回包
+    struct JRegMarketInitAllRsp
+    {
+        1 optional vector<JMarketInitInfo> vMInfo;
+    };
+    
+    //21协议，内部窥视信息
+    struct JOtherinfoReq
+    {
+        1 optional short req;
+    };
+    
+    //21回包
+    struct JOtherinfoRsp
+    {
+        1 optional JOtherinfo sInfo;
+    };
+
+    //1205, 综合排名
+    struct JZhSortReq
+    {
+        1 optional byte domain;
+        2 optional byte num;
+    };
+
+    //1205回包
+    struct JZhSortRsp
+    {
+        1 optional vector<JZhReSult> vInfo;
+    };
+
+    //5010 行情信息初始化-请求结构
+    struct JRegMarketInitReq
+    {
+        1 optional long lReqid;
+        2 optional byte ucRegFlag;
+        3 optional short shtSetcode;
+    };
+    //5010 行情信息初始化-回包结构
+    struct JRegMarketInitRsp
+    {
+        1 optional long lReqid;
+        2 optional short shtSetcode;
+        3 optional unsigned int uiTradeSequence;
+        4 optional unsigned int uiTradeDate;
+        5 optional string sCheckSum;
+    };
+
+    // 5101 全盘看景, 请求结构
+    struct JMultiHqReq
+    {
+        1 require short shtDomain;
+        2 optional short shtColType;
+        3 optional short shtStartxh;
+        4 optional short shtWantNum = 100;
+        5 optional short shtSortType;
+    };
+    // 5101 全盘看景, 回包结构
+    struct JMultiHqRsp
+    {
+        1 optional vector<JCurrStockData> vStockData;
+    };
+    
+    //15 指定股票的除权数据-请求结构
+    struct JCqxcReq
+    {
+        1 require vector<JStock> vMarket;
+    };
+    //15 指定股票的除权数据-回包结构
+    struct JCqxcRsp
+    {
+        1 require vector<JStockCwData> vStockCwData;  //除权数据
+    };
+    
+    //16 指定股票财务数据-请求结构
+    struct JFinancialDataReq
+    {
+        1 require vector<JStock> vMarket;
+    };
+    //16 指定股票的财务数据-回包结构
+    struct JFinancialDataRsp
+    {
+        1 require vector<JRemoteBaseInfo> vRemoteBaseInfo;  //除权数据
+    };
+    
+    //4040 分析数据文件请求-请求结构
+    struct JFixFileReq
+    {
+        1 optional short shtSetcode;
+        2 optional string sCode;
+        3 optional int iStartDate;
+        4 optional int iEndDate;
+        5 optional short shtType;
+    };
+    //4040 分析数据文件请求-回包结构
+    struct JFixFileRsp
+    {
+        1 optional short shtType;
+        2 optional vector<JAnalyData> vAnalyData;  //除权数据
+    };
+
+// 不提供这类接口
+//    // 709 获得文件长度, 请求结构
+//    struct JFileLengthReq
+//    {
+//        1 require string sFileName;
+//    };
+//    // 709 获得文件长度, 回包结构
+//    struct JFileLengthRsp
+//    {
+//        1 optional unsigned int uiFileLength;
+//    };
+    
+    //5030 效验获得文件, 请求结构
+    struct JGetNewFileReq
+    {
+        1 require string sFileName;
+        2 require string sCheckSum;
+    };
+    //5030 效验获得文件, 回包结构
+    struct JGetNewFileRsp
+    {
+        1 optional short shtFlag;
+        2 optional string  sFileName;
+        3 optional string sCheckSum;
+        4 optional int iFileLen;
+        5 optional int iBufLen;
+        6 optional string sContent;
+    };
+
+    // 4062 取Url紧急通告, 请求结果
+// 不需要请求字段
+//    struct JGetUrgentUrlReq
+//    {
+//        1 optional byte cFlag;      // 这个请求不需要任何字段, 这是一个预留字段
+//    };
+    // 4062 取Url紧急通告, 回包结果
+    struct JGetUrgentUrlRsp
+    {
+        1 optional long lUrlEndTime;
+        2 optional string sUrlTitle;
+        3 optional string sUrl;
+        4 optional string sReserved;
+    };
+    
+    //4 行情存活包,请求结构
+    struct JHqAliveReq
+    {
+        1 optional byte flag; //可选字段,无效值
+    };
+    
+    //4 行情存活包,回包结构
+    struct JHqAliveRsp
+    {
+        1 optional short shtUrgentNum;
+        2 optional byte ucType;
+        3 optional short shtWhich;
+        4 optional short shtUnUsed;
+    };
+    
+    //5 取广告或紧急公告,请求结构
+    struct JUrgentCfgReq
+    {
+        1 optional short shtReq; //可选字段,无效值
+    };
+    
+    //5 取广告或紧急公告,回包结构
+    struct JUrgentCfgRsp
+    {
+        1 optional short shtNum; //默认是0
+    };  
+    
+    interface AdsProxy
+    {
+        //原4015协议
+        int tickData(JTickDataReq stReq, out JTickDataRsp stRsp);
+
+        // 原4021协议
+        int hisTickData(JHisTickDataReq stReq, out JHisTickDataRsp stRsp);
+
+        // 原1326协议
+        int kLine(JKLineOldReq stReq, out JKLineOldRsp stRsp);
+
+        // 5013 历史分时数据
+        int hisRtMinute(JHisMinuteReq stReq, out JHisMinuteRsp stRsp);
+
+        // 5012 分时数据
+        int rtMinute(JMinuteReq stReq, out JMinuteRsp stRsp);
+
+        // 1306 分价表
+        int fjb(JFJBReq stReq, out JFJBRsp stRsp);
+
+        // 1307 买卖力道
+        int mmld(JMMLDReq stReq, out JMMLDRsp stRsp);
+
+        // 1308 持仓量
+        int ccl(JCCLReq stReq, out JCCLRsp stRsp);
+
+        // 1313 支持5档买卖盘
+        int comb5Mmp(JCombHqReq stReq, out JCombHqRsp stRsp);
+
+        // 1315, 1321 支持5档买卖盘2
+        int comb5Mmp2(JCombHq2Req stReq, out JCombHq2Rsp stRsp);
+        
+   		//6001协议 注册码表
+		//int regStkDict(JRegStkDictReq stReq, out JRegStkDictRsp stRsp);
+
+        //6005协议 市场交易时间
+        int cptMinAll(JCPTMinAllReq stReq, out JCPTMinAllRsp stRsp);
+        
+        //6007协议 新注册码表
+        int regStkDictNew(JRegStkDictNewReq stReq, out JRegStkDictNewRsp stRsp);
+        
+        //6004协议 全注册码表
+        int regStkDictAll(JRegStkDictAllReq stReq, out JRegStkDictAllRsp stRsp);
+
+        // 1311, 1302 支持5档买卖盘的个股行情
+        int geGuHq(JGeGuHqReq stReq, out JGeGuHqRsp stRsp);
+
+        // 1316 支持5档买卖盘, 支持屏蔽在A股中003 和 609
+        int multiHq5Mmp(JMultiHq5MmpReq stReq, out JMultiHq5MmpRsp stRsp);
+
+        // 4029 精简行情
+        int simHq(JSimHqReq stReq, out JSimHqRsp stRsp);
+
+        // 30 是否需要认证
+        int needAuth(JNeedAuthReq stReq, out JNeedAuthRsp stRsp);
+
+        // 5000 L2登录
+        int login(JLoginReq stReq, out JLoginRsp stRsp);
+
+        // 5014 L2行情
+        int l2Hq(JL2HqReq stReq, out JL2HqRsp stRsp);
+
+        // 5016 L2逐笔交易
+        int l2Transaction(JL2TransactionReq stReq, out JL2TransactionRsp stRsp);
+
+        // 5017 L2委托单信息
+        int l2OrderDetail(JL2OrderDetailReq stReq, out JL2OrderDetailRsp stRsp);
+
+        // 5026 短线精灵
+        int dxjl(JDxjlReq stReq, out JDxjlRsp stRsp);
+
+        // 5015 L2委托队列
+        int l2OrderQueue(JL2OrderQueueReq stReq, out JL2OrderQueueRsp stRsp);
+
+        // 5018 L2价格委托
+        int l2AllPriceOrder(JL2AllPriceOrderReq stReq, out JL2AllPriceOrderRsp stRsp);
+
+        // 5019 L2逐笔委托单量
+        int l2HqPriceOrderQueue(JL2HqPriceOrderQueueReq stReq, out JL2HqPriceOrderQueueRsp stRsp);
+
+        // 5031 L2大单成交
+        int l2HqBigTransaction(JL2HqBigTransactionReq stReq, out JL2HqBigTransactionRsp stRsp);
+
+        // 5032 L2大单委托
+        int l2BigOrderDetail(JL2OrderDetailReq stReq, out JL2OrderDetailRsp stRsp);
+
+		// 5033 L2取消委托
+		int l2CancelOrderDetail(JL2OrderDetailReq stReq, out JL2OrderDetailRsp stRsp);
+		
+		//1104协议，市场码表Get接口
+		int stockDictGet(JStockInfGetReq stReq, out JStockInfGetRsp stRsp);
+		
+		//1801协议，股票实时资金流
+		int stockMoneyFlowGet(JFlowDataReq stReq, out JFlowDataRsp stRsp);
+		
+		//5011协议，单只股票实时行情
+		int curStkHQGet(JCurrStkHQReq stReq, out JCurrStkHQRsp stRsp);
+		
+		//1802协议，单只股票资金流
+		int stockMFlowItemGet(JFlowDataItemReq stReq, out JFlowDataItemRsp stRsp);
+		
+		//1805协议，单只股票历史资金流
+		int stockMFlowHisGet(JFlowDataHisReq stReq, out JFlowDataHisRsp stRsp);
+		
+		//1806协议，所有股票多日资金流
+		int stockMFlowDaysGet(JFlowDataDaysReq stReq, out JFlowDataDaysRsp stRsp);
+		
+		//1812协议，所有股票DDX资金流
+		int stockMFlowDDXGet(JFlowDataDDXReq stReq, out JFlowDataDDXRsp stRsp);
+		
+		//1813协议，所有股票历史DDX资金流
+		int stockMFlowHisDDXGet(JFlowDataHisDDXReq stReq, out JFlowDataHisDDXRsp stRsp);
+		
+		//5025协议，单只股票周期资金流
+		int stkNewMFlowGet(JNewHisMoneyFlowReq stReq, out JNewHisMoneyFlowRsp stRsp);
+		
+		//1327协议，周期分钟资金流
+		int stkMinFlowGet(JMinFlowDataReq stReq, out JMinFlowDataRsp stRsp);
+		
+		//5020协议,推送资金流
+		int stkRegFlowData(JRegMoneyFlowReq stReq, out JRegMoneyFlowRsp stRsp);
+		
+		//5027协议, 分时资金流
+		int stkRtMinFlowGet(JRtMinFlowDataReq stReq, out JRtMinFlowDataRsp stRsp);
+		
+		//5021协议，新的行情信息，类型到股票
+		int regTypeToStock(JRegTypeToStockReq stReq, out JRegNewColListRsp stRsp);
+		
+		//5022协议，板块到股票
+		int regBlockToStock(JRegBlock2StockReq stReq, out JRegNewColListRsp stRsp);
+		
+		//5023协议，股票到板块
+        int regStockToBlock(JRegStock2BlockReq stReq, out JRegNewColListRsp stRsp);
+        
+        //5029协议，板块到股票
+        int regMBlockToStock(JRegMBlock2StockReq stReq, out JRegNewColListRsp stRsp);
+		
+		//6002协议，交易时间
+		int regMarketTradeInfo(JRegMarketTradeInfoReq stReq, out JRegMarketTradeInfoRsp stRsp);
+		
+		//32协议，主站扩充信息3
+		//int doHostMore3Get(JHostMore3Req stReq, out JHostMore3Rsp stRsp);
+		
+		//13协议，主站扩充信息1
+		//int doHostMore1Get(JHostMore1Req stReq, out JHostMore1Rsp stRsp);
+		
+		//31协议，主站扩充信息2
+		int doHostMore2Get(JHostMore2Req stReq, out JHostMore2Rsp stRsp);
+		
+		//33协议，主站所有信息
+		//int doHostMoreAllGet(JHostMoreAllReq stReq, out JHostMoreAllRsp stRsp);
+		
+		//5200协议，最近交易时间
+		int regCPTMin(JRegMarketCPTMinReq stReq, out JRegMarketCPTMinRsp stRsp);
+		
+		//6006协议，注册初始化市场
+		int regMarketInitAll(JRegMarketInitAllReq stReq, out JRegMarketInitAllRsp stRsp);
+		
+		//21协议,内部窥视信息
+		//int otherInfoGet(JOtherinfoReq stReq, out JOtherinfoRsp stRsp);
+		
+		//1205协议,综合排名
+		int zhPmGet(JZhSortReq stReq, out JZhSortRsp stRsp);
+		
+		//5010协议 行情信息初始化
+		int regMarketInit(JRegMarketInitReq  stReq, out JRegMarketInitRsp stRsp);
+	
+		// 5101 全盘看景
+		int multiHq(JMultiHqReq stReq, out JMultiHqRsp stRsp);
+
+        //15 协议  指定股票获取除权数据
+        int getCqcx(JCqxcReq  stReq, out JCqxcRsp stRsp);
+
+        //16 协议  指定股票获取财务数据
+        int getFinancialData(JFinancialDataReq  stReq, out JFinancialDataRsp stRsp);
+
+        //4040 协议  分析数据文件请求
+        int fixFile(JFixFileReq  stReq, out JFixFileRsp stRsp); 
+        
+       // 不在提供这类接口
+       // 709 获得文件长度
+       // int fileLength(JFileLengthReq stReq, out JFileLengthRsp stRsp);
+        
+        // 5030 效验 获得文件
+        int getNewFile(JGetNewFileReq stReq, out JGetNewFileRsp stRsp);
+        
+        // 4062 取Url紧急通告
+        int getUrgentUrl(out JGetUrgentUrlRsp stRsp);
+
+        //4 行情存活包
+        int hqAlive(JHqAliveReq stReq, out JHqAliveRsp stRsp);
+        
+        //5 取广告或紧急公告,请求结构
+        int urgentCfg(JUrgentCfgReq stReq, out JUrgentCfgRsp stRsp);
+    };
+
+}; 
