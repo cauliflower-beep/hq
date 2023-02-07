@@ -3,23 +3,24 @@ package test
 import (
 	"fmt"
 	"hq/api"
-	"hq/internal/model"
+	"hq/pkg/common"
 	"testing"
 )
 
 func TestGetBasicHq(t *testing.T) {
-	var stocks []model.Stock
-	stocks = append(stocks, model.Stock{
+	var stocks []common.Stock
+	stocks = append(stocks, common.Stock{
 		Market:    0,
 		StockCode: "399001",
 	})
-	stocks = append(stocks, model.Stock{
+	stocks = append(stocks, common.Stock{
 		Market:    1,
 		StockCode: "000001",
 	})
+	fmt.Println("请求参数股票|", stocks)
 	// 设置主站地址
 	var op = api.Option{
-		HqServant: `HQSys.MarketDataServer.BasicHqObj@tcp -h 172.29.13.12 -t 60000 -p 10050`,
+		HqServant: `HQSys.MarketDataServer.BasicHqObj@tcp -h 172.16.8.125 -t 60000 -p 8888`,
 	}
 	api.Init(op)
 
